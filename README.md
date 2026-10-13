@@ -7,9 +7,23 @@ training data, so trust that file over habit.
 
 # HtmlSecurityCheck: Reject HTML That Could Run Script
 
-HtmlSecurityCheck checks HTML from any source (an editor, a web form, an email, an import, an API)
-and rejects it if it could run script, with a list of reasons that quote the tag or attribute
-at fault. It never rewrites the content: what passes is what you store and what you show.
+HtmlSecurityCheck checks the HTML a WYSIWYG editor such as TinyMCE or CKEditor submits, and
+rejects it if it could run script, send the page's data to another host, or mislead the
+visitor. Each error names the tag or attribute that failed.
+
+- **It never rewrites the content.** What passes is stored and shown byte for byte as submitted.
+- **It reads HTML the way a browser does.** Its HTML5 tokenizer is tested against html5lib's
+  tests, and CI fails if headless Chrome finds script in anything the check accepts.
+- **A typical page checks in under 0.04 ms,** 50 to 115 times less than HTMLPurifier takes
+  on the same pages ([benchmarks](benchmarks/results.md)).
+
+## Documentation
+
+Full docs ([browse on GitHub](https://github.com/interactivetools-com/HtmlSecurityCheck)):
+
+- [Error codes and fixes](docs/errors.md) - every message, and what to change in the content
+- [AI reference](docs/ai-reference.md) - the complete API and every rule in one file, written for AI coding assistants
+- [Changelog](CHANGELOG.md)
 
 ## Quick Start
 
@@ -23,157 +37,81 @@ composer require itools/htmlsecuritycheck
 use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
 
 // save.php: check the field, then store it as submitted
-$result = HtmlSecurityCheck::check($_POST['body']);   // nothing throws: bad bytes are a rejection too
+$result = HtmlSecurityCheck::check($_POST['body']);   // never throws; invalid UTF-8 is a rejection too
 if (!$result->ok) {
     foreach ($result->errors as $violation) {
         echo htmlspecialchars($violation->message), "<br>";   // onclick= event handler attributes are not allowed
     }
     exit;
 }
-$statement = $mysqli->prepare('UPDATE articles SET body = ? WHERE id = ?');
-$statement->bind_param('si', $_POST['body'], $_POST['id']);
-$statement->execute();
 
-// show.php: content that arrived by import, email, a feed or an older save was never checked, so check it before printing
-$article = $mysqli->query('SELECT body FROM articles WHERE id = 1')->fetch_assoc();
-$result  = HtmlSecurityCheck::check($article['body']);
-echo $result->ok ? $article['body'] : '<p>This article is hidden until its HTML is fixed.</p>';
+// show.php: HTML from an import, an email or an older save was never checked, so check it before printing
+echo HtmlSecurityCheck::check($body)->ok ? $body : '<p>This content is hidden until its HTML is fixed.</p>';
 ```
 
-The rest of the API:
+The rest of the API. The switches are static properties; set them once at startup:
 
 ```php
-$result->ok;                   // true when nothing was found
-$result->errors;               // Violation[], one per distinct problem, in document order
 $violation->code;              // 'event-handler', stable across releases, so switch on it
 $violation->detail;            // 'onclick', text from the content, so encode it before output
-$violation->message;           // 'onclick= event handler attributes are not allowed'
 $violation->template;          // '%s= event handler attributes are not allowed', for translation with Violation::TEMPLATES
 HtmlSecurityCheck::rules();    // the rule tables and the current switches, for settings pages and debugging
-```
 
-The switches are static properties, set once at startup. The defaults suit a CMS whose
-staff edit its own pages:
-
-```php
-HtmlSecurityCheck::$allowForms          = false;   // <form>, <input>, <button> and the other form elements: a form can imitate a login box
-HtmlSecurityCheck::$allowStyleAttribute = true;    // style="...", checked for CSS that could run or leak; it styles its own element only
-HtmlSecurityCheck::$allowStyleElement   = true;    // <style>, checked the same way; its rules can restyle anything on the page
-HtmlSecurityCheck::$allowEmbeds         = true;    // <iframe> whose src points at a host in $iframeHosts
+HtmlSecurityCheck::$allowForms          = false;   // <form>, <input>, <button>: a form can imitate a login box
+HtmlSecurityCheck::$allowStyleAttribute = true;    // style="...", through the CSS check; styles its own element only
+HtmlSecurityCheck::$allowStyleElement   = true;    // <style>, through the CSS check; can restyle the whole page
+HtmlSecurityCheck::$allowEmbeds         = true;    // <iframe> whose src host is in $iframeHosts
 HtmlSecurityCheck::$iframeHosts         = ['www.youtube.com', 'www.youtube-nocookie.com', 'player.vimeo.com', 'www.google.com'];
-HtmlSecurityCheck::$urlSchemes          = ['http', 'https', 'mailto', 'tel'];   // what a link may start with; add sms or an app link if your visitors' machines should open it
+HtmlSecurityCheck::$urlSchemes          = ['http', 'https', 'mailto', 'tel'];   // add 'sms' or an app's scheme to let links open it
 ```
 
-## What It Blocks
+## What It Rejects
 
-The check answers one question: printed into the body of a page on your site, could this HTML
-run script? The attack it stops is stored XSS, where one `<script>` in a field runs for every
-visitor and every staff member who opens the page, with their session.
+- **Script:** `<script>`, `onerror=`, `javascript:` and `data:text/html` links, `<object>`,
+  `<base>`, and `x-init=`, `data-*` and custom elements, which the page's own JavaScript
+  (Alpine, Stimulus, web components) would run.
+- **Sending page data to another host:** `<link rel="stylesheet">`, CSS selectors such as
+  `input[value^="a"]` with a `url()`, and a tag left open at the end, which turns the page text
+  up to the next quote into part of its URL.
+- **Misleading the visitor:** `<meta http-equiv="refresh">`, `<form>`, an `<iframe>` from a
+  host not in `$iframeHosts`, and links with `search-ms:` or another scheme that opens a program.
+- **Markup that browsers and other parsers read differently:** `<svg>`, `<template>`,
+  `<noscript>`, a `<` inside `<style>`, and bytes that are not UTF-8.
+- **A whole pasted page:** `<html>`, `<head>`, `<body>` and `<title>`.
 
-### Script, and Anything That Could Hide It
+Element names, attribute names, iframe hosts and the schemes on `href`, `src` and the other URL
+attributes must be on the check's lists, so anything it doesn't know is rejected. CSS works the
+other way: it rejects a list of patterns (`expression(`, `@import`, `\` escapes, `[value^=`
+and a few more), allows `url()` only to `http:`, `https:` or a relative path, and passes the rest.
 
-Elements, attribute names and URL schemes are allowlists: a name or scheme passes only if it
-is on the list.
+## Recommended Extra Steps
 
-- **Script.** `<script>`, every `on*` attribute, `srcdoc`, and `<object>`, `<embed>` and
-  `<applet>`, which load a document that runs script of its own. Also `<base>`, which changes
-  where the page's own relative `<script src>` paths load from, and the CSS that ran script in
-  old IE and Firefox: `expression()`, `behavior:` and `-moz-binding`.
-- **URLs.** On the attributes browsers read as URLs (`href`, `src`, `action`, `poster` and the
-  rest), only a scheme from `$urlSchemes` (`http:`, `https:`, `mailto:`, `tel:`) or no scheme.
-  A `data:` URL is a whole document, and an unknown scheme asks the visitor's machine to open
-  whatever program is registered for it. The one exception is `data:image/...` on `<img src>`,
-  which a browser shows as a picture and nothing else. Every attribute value that starts with
-  `javascript:` is refused, even one the browser ignores, because a page script that copies
-  the value into a link runs it.
-- **Code the page's own scripts would run.** Alpine runs `x-init`, HTMX sends `hx-get`,
-  Stimulus reads `data-action`, and a page can define `<my-widget>` with code of its own. So
-  every element and attribute must be on a list from the HTML Standard, plus `aria-*` and the
-  names Word adds to a paste. `data-*` and custom elements are refused.
-- **Anything that could hide script from the check.** The check passes the content through
-  unchanged, so it refuses everything a browser and another parser read differently:
-  `<template>`, `<noscript>`, `<xmp>`, `<plaintext>`, `<svg>`, `<math>`, bytes that are not
-  UTF-8, control characters, backslash escapes in CSS, and a `<` inside `<style>`, `<iframe>`,
-  `<textarea>` or a `<?...>` comment, which is text to a browser but a tag to `strip_tags()`
-  with an allow list. Markup inside a `<!--[if ...]>` conditional comment gets the same rules
-  as the rest, because Outlook and the IE engine in old Windows programs still read it. A tag,
-  comment or `<style>` left open at the end of the content is refused too: on its own a
-  browser drops it, but printed into a page, the page up to the next quote becomes the URL
-  that gets fetched.
-
-### Not Script, but Refused Anyway
-
-None of these run script. Each is a real attack, and real content almost never uses them, so
-refusing them costs nothing.
-
-- **CSS that sends page data to another host.** `[value^=` and the other substring selectors
-  (`^=`, `$=`, `*=`) on any attribute but `style`, `src` and `class`, `unicode-range`,
-  `@import`, and `url()` to anything but `http:`, `https:` or a relative path. Each lets a
-  `<style>` block send a CSRF token or a prefilled email address to another host.
-- **Markup that belongs to the page, not the content.** `<html>`, `<head>`, `<body>`, `<meta>`,
-  `<link>` and `<title>`. A `<meta http-equiv="refresh">` sends every visitor to another site,
-  and a `<link rel="stylesheet">` loads CSS the check never saw.
-
-### Switches
-
-- **Forms are off.** A form runs no script, but it can imitate a login box. `$allowForms`
-  turns them on.
-- **Frames are on, from listed hosts only.** A frame from anywhere can show anything, so the
-  `src` host must be in `$iframeHosts`: YouTube, Vimeo and Google Maps by default.
-- **Styles are on, through the CSS check.** A `style` attribute styles only its own element;
-  a `<style>` element can restyle anything on the page. Each has its own switch,
-  `$allowStyleAttribute` and `$allowStyleElement`.
-
-The check runs the HTML5 tokenizer on the content and checks each tag as it comes out. There
-is no tree and no second parse, so the tags and attributes it checks are the ones a browser
-reads, and memory is a copy of the content plus the current token, about twice the content
-for ordinary markup. The tokenizer passes the html5lib tokenizer test suite, all but the cases
-that need a parser rather than a tokenizer (a parsed DOCTYPE, the script-data and CDATA
-states) and four lone-surrogate inputs. The rules are checked against the PortSwigger,
-html5sec, DOMPurify and OWASP payload lists.
+- **Show rejected content without running it.** Print it in
+  `<iframe sandbox srcdoc="<?= htmlspecialchars($body) ?>"></iframe>`: no script, forms or
+  popups, and no access to your page or its cookies. Images and CSS still load.
+- **Turn script off in the editor.** Content saved before the check existed opens there
+  unchecked. Give the editor's frame the policy `script-src 'none'; object-src 'none'`
+  (TinyMCE's `content_security_policy` option; iframe mode only).
 
 ## What It Does Not Check
 
-Everything here is real, and none of it runs script. It is left to the page, or to a rule of
-your own, because a check for it would refuse ordinary content for no gain in safety.
-
-- **Where you print it.** An accepted fragment is safe as body content. Printed inside a
-  `<script>`, a `<style>`, an attribute value, or a `<textarea>`, any text is something else.
-- **Whether the HTML is valid.** An unclosed `<p>`, wrong nesting, and an attribute on the
-  wrong element (`<p href>`) all pass; browsers render them and no script runs.
-- **Tracking.** An `<img>` on another host, a CSS `url()` to another host, and a `ping`
-  attribute all pass. An image loads no script.
-- **Layout tricks.** `position: fixed`, `z-index` and a giant `<div>` can cover the page with
-  a fake login box. Forms are off by default for the same reason.
-- **`id` and `name` clobbering.** An `<img name="submit">` can shadow `form.submit` for a
-  page script that reads it. Both attributes pass.
-- **Length or sense.** Blank, enormous, offensive, or another site's text all pass. Cap the
-  size before the check. A check's time grows with the size of the content and never faster,
-  so the size cap is also a cap on what a check can cost. The hostile inputs table in
-  [benchmarks/results.md](benchmarks/results.md) shows what a megabyte of the worst shapes takes.
+- **Where you print it.** A passing fragment is safe between ordinary tags such as `<div>` or
+  `<td>`, not inside `<script>`, `<style>`, `<textarea>`, `<title>`, inline SVG or an attribute
+  value.
+- **End tags.** A `</div>` in the content passes even when it closes one of your page's
+  elements, so the content can end a wrapper early.
+- **Anything that runs no script.** Images and `url()` on other hosts, `position: fixed`
+  overlays, invalid HTML, `id` or `name` values that match a page script's variables, and
+  length all pass. Cap the size before the check; check time grows in step with size.
 
 ## When You Might Not Want HtmlSecurityCheck
 
-- **Visitor content you publish as HTML.** A bounced post with a reason works for staff who can fix it, and
-  fails for a visitor who cannot. Forum posts and comments want a sanitizer such as
-  [HTMLPurifier](http://htmlpurifier.org/), which returns trimmed output instead.
-- **Content with inline SVG or MathML.** Both are refused with no switch. Upload SVG as a
-  file, check it with SvgSecurityCheck, and link it from `<img src>`.
-- **Markup for a front-end framework.** `data-*` attributes and custom elements are refused
-  with no switch, so markup for Alpine, HTMX, Stimulus or web components does not pass.
-- **A "clean it for me" button.** There is no output to hand back. Run a sanitizer for that
-  and check what it returns.
-
-A check costs less than receiving the form post did; the measurements are in
-[benchmarks/results.md](benchmarks/results.md).
-
-## Documentation
-
-Full docs ([browse on GitHub](https://github.com/interactivetools-com/HtmlSecurityCheck)):
-
-- [Error codes and fixes](docs/errors.md) - every message, and what to change in the content
-- [AI reference](docs/ai-reference.md) - the complete API and every rule in one file, written for AI coding assistants
-- [Changelog](CHANGELOG.md)
+- **Visitor posts.** A rejection works for staff who can fix the HTML, not for a visitor who
+  can't. Forum posts and comments need a sanitizer such as [HTMLPurifier](https://htmlpurifier.org/).
+- **Inline SVG or MathML.** Both are rejected with no switch. Upload SVG as a file, check it with
+  SvgSecurityCheck, and show it with `<img src>`.
+- **Markup for Alpine, HTMX, Stimulus or web components.** `data-*` attributes and custom
+  elements are rejected with no switch.
 
 ## Related Libraries
 
