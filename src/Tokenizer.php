@@ -52,7 +52,7 @@ use const PREG_OFFSET_CAPTURE;
  *
  * Doctype tokens carry the raw text after "<!DOCTYPE" with no further parsing.
  *
- * @internal The validator's own parser, not part of the public API; it can change between releases.
+ * @internal HtmlSecurityCheck's own parser, not part of the public API; it can change between releases.
  */
 final class Tokenizer
 {

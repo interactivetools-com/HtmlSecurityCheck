@@ -147,8 +147,9 @@ final class HtmlSecurityCheck
 
     /**
      * Attributes current browsers resolve as URLs on an allowed element. Their values must have
-     * no scheme or one in $urlSchemes. Every other attribute value only has to avoid
-     * SCRIPT_SCHEMES, so title="Note: x" and data="Note: x" pass.
+     * no scheme or one in $urlSchemes; srcset and ping hold a list, and every URL in it is
+     * checked. Every other attribute value only has to avoid SCRIPT_SCHEMES, so
+     * title="Note: x" and data="Note: x" pass.
      */
     public const URL_ATTRIBUTES = ['href', 'src', 'action', 'formaction', 'poster', 'ping', 'srcset', 'cite', 'longdesc', 'background'];
 
@@ -497,18 +498,24 @@ final class HtmlSecurityCheck
             $this->checkCss($value);
             return;
         }
-        $scheme = self::scheme($value);
-        if ($scheme === null) {
-            return;
-        }
-        if ($scheme === 'data' && $element === 'img' && $attribute === 'src' && str_starts_with(strtolower(self::compact($value)), 'data:image/')) {
-            return;   // inline image data: a browser decodes an img resource as a picture and nothing else, whatever the type
-        }
-        $allowed = in_array($attribute, self::URL_ATTRIBUTES, true)
-            ? in_array($scheme, self::urlSchemes(), true)
-            : !in_array($scheme, self::SCRIPT_SCHEMES, true);
-        if (!$allowed) {
-            $this->fail('url-scheme-not-allowed', self::excerpt("$attribute=\"$value\""));
+        // srcset and ping are lists: ping splits at spaces, srcset at commas and at the spaces before each descriptor
+        $isList = $attribute === 'srcset' || $attribute === 'ping';
+        $urls   = $isList ? (preg_split('/[\s,]++/', $value, -1, PREG_SPLIT_NO_EMPTY) ?: [$value]) : [$value];
+        foreach ($urls as $url) {
+            $scheme = self::scheme($url);
+            if ($scheme === null) {
+                continue;
+            }
+            if ($scheme === 'data' && $element === 'img' && $attribute === 'src' && str_starts_with(strtolower(self::compact($url)), 'data:image/')) {
+                continue;   // inline image data: a browser decodes an img resource as a picture and nothing else, whatever the type
+            }
+            $allowed = in_array($attribute, self::URL_ATTRIBUTES, true)
+                ? in_array($scheme, self::urlSchemes(), true)
+                : !in_array($scheme, self::SCRIPT_SCHEMES, true);
+            if (!$allowed) {
+                $this->fail('url-scheme-not-allowed', self::excerpt("$attribute=\"$value\""));
+                return;
+            }
         }
     }
 

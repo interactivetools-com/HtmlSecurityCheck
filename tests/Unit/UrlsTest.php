@@ -45,6 +45,13 @@ final class UrlsTest extends HtmlSecurityCheckTestCase
         ];
     }
 
+    public function testUrlListsPass(): void
+    {
+        $this->assertAccepts('<img src="a.jpg" srcset="a-480.jpg 480w, https://cdn.example.com/a-800.jpg 800w,a-2x.jpg 2x" sizes="(max-width: 600px) 480px, 800px">');
+        $this->assertAccepts('<img srcset="/time/12:30.jpg 1x, ?when=12:30 1.5x">');
+        $this->assertAccepts('<a href="/x" ping="/log https://stats.example.com/ping">x</a>');
+    }
+
     #[DataProvider('imageDataProvider')]
     public function testImageDataPassesOnImgSrc(string $value): void
     {
@@ -122,6 +129,10 @@ final class UrlsTest extends HtmlSecurityCheckTestCase
             'background on table'        => ['<table background="javascript:alert(1)"></table>'],
             'ping'                       => ['<a href="/x" ping="javascript:alert(1)">x</a>'],
             'srcset'                     => ['<img srcset="javascript:alert(1) 1x">'],
+            'srcset second url'          => ['<img srcset="a.png 1x, javascript:alert(1) 2x">'],
+            'srcset with no spaces'      => ['<img srcset="a.png 1x,javascript:alert(1) 2x">'],
+            'srcset with no descriptor'  => ['<img srcset="a.png,javascript:alert(1)">'],
+            'ping second url'            => ['<a href="/x" ping="/log javascript:alert(1)">x</a>'],
             'word element'               => ['<v:roundrect href="javascript:alert(1)">x</v:roundrect>'],
             'plain attribute'            => ['<p title="javascript:alert(1)">x</p>'],
             'value attribute'            => ['<li value="javascript:alert(1)">'],   // a script that copies a value into a link runs it
@@ -142,7 +153,7 @@ final class UrlsTest extends HtmlSecurityCheckTestCase
     public function testDetailQuotesTheAttributeAsDecoded(): void
     {
         $violation = $this->assertRejects('<a href="javascript&colon;alert(1)">x</a>', 'url-scheme-not-allowed', 'href="javascript:alert(1)"');
-        $this->assertSame('The URL in href="javascript:alert(1)" must start with http:, https:, mailto:, tel: or another allowed scheme', $violation->message);
+        $this->assertSame('href="javascript:alert(1)" uses a URL scheme that is not allowed', $violation->message);
     }
 
     //endregion

@@ -173,7 +173,7 @@ Every code, its template, and what `detail` holds. Templates are `Violation::TEM
 | `element-not-allowed`    | `%s is not allowed`                                                                             | the start tag as written, from `<` to `>` (`<script src="x">`), or the doctype (`<!DOCTYPE html>`)                                                        |
 | `event-handler`          | `%s= event handler attributes are not allowed`                                                  | the attribute name, lowercased (`onclick`)                                                                                                                |
 | `attribute-not-allowed`  | `The %s attribute is not allowed`                                                               | the attribute name, lowercased (`data-id`, `x-init`, `srcdoc`), or for an `xmlns:*` declaration the name and value (`xmlns:o="http://www.w3.org/1999/xhtml"`) |
-| `url-scheme-not-allowed` | `The URL in %s must start with http:, https:, mailto:, tel: or another allowed scheme`          | the attribute name and its decoded value (`href="javascript:alert(1)"`)                                                                                   |
+| `url-scheme-not-allowed` | `%s uses a URL scheme that is not allowed`                                                      | the attribute name and its decoded value (`href="javascript:alert(1)"`)                                                                                   |
 | `iframe-host`            | `Embedding frames from %s is not allowed`                                                       | the `src` value with whitespace removed (`https://evil.example/x`), or `(no src)`                                                                         |
 | `css-not-allowed`        | `CSS containing %s is not allowed`                                                              | the banned token as matched (`expression(`, `\`, `[value^=`, `unicode-range`) or the `url()` with its target (`url(javascript:x)`), or the first 80 characters of a block past the PCRE limit (megabytes of `x*|` pairs inside one `[`) |
 | `less-than-in-text`      | `A < where a browser reads text, not tags: %s`                                                  | the text from that `<` to the end of the raw text or comment (`<img src=x onerror=alert(1)>`, `<b> c`)                                                    |
@@ -249,7 +249,7 @@ Not allowed on purpose, so never add them to content to "fix" a rejection:
   unknown elements a browser does nothing with; their attributes get the normal rules.
 
 End tags are never checked: `</script>` with no start tag is fine. Text is never checked:
-`&lt;script&gt;` is text to a browser and to the validator. Comments are not checked:
+`&lt;script&gt;` is text to a browser and to the check. Comments are not checked:
 `<!-- <script>alert(1)</script> -->` passes. The one exception is a conditional comment:
 the markup inside `<!--[if IE]> ... <![endif]-->` gets the same rules as the rest, see
 [Text That Is Not Markup](#rules-text-that-is-not-markup). A `<?import ...>` instruction,
@@ -309,8 +309,10 @@ and `&#106;avascript:` are `javascript:` too. A value with no scheme (a relative
 
 The detail is the attribute name and the decoded value: `href="javascript:alert(1)"`.
 
-`srcset` is checked as one value: `javascript:alert(1) 1x` starts with `javascript:` and
-rejects. A second URL after a comma is not read separately.
+`srcset` and `ping` hold a list of URLs, split at whitespace and commas, and every URL in
+the list is checked: `srcset="a.png 1x, javascript:alert(1) 2x"` rejects, and the detail is
+the whole attribute. A comma inside a URL splits it too, so `srcset="x.php?a=1,b:2 1x"`
+rejects for a `b:` scheme; a browser reads it as one URL.
 
 ## Rules: Iframes
 
@@ -595,6 +597,6 @@ form or the API before the check.
   `data:` URL is refused.
 - **Switches are process-wide.** They are static properties, so a change in one request
   handler affects every later `check()` in the same process. Set them at startup.
-- **`Tokenizer`, `Token` and `CharacterReferences` are internal.** They are the validator's
+- **`Tokenizer`, `Token` and `CharacterReferences` are internal.** They are HtmlSecurityCheck's
   own parser, marked `@internal`, and can change between releases. The public API is
   `HtmlSecurityCheck`, `Result` and `Violation`.
