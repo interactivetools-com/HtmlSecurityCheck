@@ -339,17 +339,18 @@ strings are removed first (see below), then two checks run, case-insensitive:
 
 1. Any of these tokens rejects with `css-not-allowed` and the token as the detail: a
    backslash `\`, `@import`, `image(`, `image-set(`, `src(`, `expression(`,
-   `-moz-binding`, `behavior:` as a property name (whitespace before the colon allowed;
-   `scroll-behavior:` and `overscroll-behavior:` pass), an attribute selector using `^=`,
+   `-moz-binding`, `behavior:` or `-ms-behavior:` as a property name (whitespace before the
+   colon allowed; `scroll-behavior:` and `overscroll-behavior:` pass), an attribute selector using `^=`,
    `$=` or `*=` (`[value^=`, `[ value ^=`) on any name but `style`, `src` and `class`, and
    `unicode-range`. The three names pass with spaces around them and with a namespace
    prefix (`[*|style^=`, `[|src$=`); a longer name that starts or ends with one does not
    (`[styles^=`, `[srcset*=`, `[data-src*=`).
-2. Every `url(` is read up to the closing quote, `)` or whitespace, and its scheme, read as in
-   [URLs](#rules-urls), must be absent or in `CSS_URL_SCHEMES`: `http`, `https`. So
+2. Every `url(` is read up to its closing quote, or when unquoted up to `)` or whitespace, and
+   its scheme, read as in [URLs](#rules-urls) with tabs and newlines dropped, must be absent or
+   in `CSS_URL_SCHEMES`: `http`, `https`. So
    `url(images/bg.png)`, `url(/x.png)`, `url(//cdn.example/x.png)`, `url(#clip)` and
    `url("https://cdn.example/x.png")` pass; `url(javascript:x)`, `url(data:image/svg+xml,...)`,
-   `url(vbscript:x)`, `url(mailto:x)` and `url(ftp://x)` reject, with the `url(` and its
+   `url(vbscript:x)`, `url(mailto:x)`, `url(ftp://x)` and `url("java<tab>script:x")` reject, with the `url(` and its
    target as the detail. This check reads the text as written, comments and strings included, so a quoted
    target is still checked. A backslash inside a quoted `url()` argument also rejects, since
    an escape there still spells a scheme: `url('\6a avascript:x')` reports `url('\`.

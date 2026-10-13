@@ -34,6 +34,7 @@ final class CssTest extends HtmlSecurityCheckTestCase
             'http url'              => ['background: url(http://example.com/bg.png)'],
             'protocol relative url' => ['background: url(//cdn.example.com/bg.png)'],
             'fragment url'          => ['clip-path: url(#clip)'],
+            'space in a quoted url' => ["background: url('images/my bg.png')"],
             'font family quotes'    => ["font-family: 'Open Sans', Arial"],
             'word paste'            => ['mso-bidi-font-weight: normal; tab-stops: 36.0pt'],
             'position fixed'        => ['position: fixed; top: 0; z-index: 9999'],   // a phishing overlay, not script: a known non-goal
@@ -74,6 +75,8 @@ final class CssTest extends HtmlSecurityCheckTestCase
             'behavior with space'   => ['behavior : url(x.htc)', 'behavior :'],
             'behavior star hack'    => ['*behavior: url(x.htc)', 'behavior:'],   // IE7 read *behavior as behavior
             'behavior underscore'   => ['_behavior: url(x.htc)', 'behavior:'],   // and IE6 read _behavior
+            'ms-behavior'           => ['-ms-behavior: url(x.htc)', '-ms-behavior:'],   // IE8's prefixed name
+            'ms-behavior uppercase' => ['-MS-Behavior : url(x.htc)', '-MS-Behavior :'],
             'moz-binding'           => ['-moz-binding: url(x.xml#a)', '-moz-binding'],
             'import'                => ['@import url(https://example.com/x.css)', '@import'],
             'backslash escape'      => ['width: e\\78 pression(alert(1))', '\\'],
@@ -83,6 +86,8 @@ final class CssTest extends HtmlSecurityCheckTestCase
             'javascript url'        => ['background: url(javascript:x)', 'url(javascript:x)'],
             'javascript url quoted' => ["background: url('javascript:x')", 'url(javascript:x)'],
             'javascript url spaced' => ['background: url( javascript:x )', 'url(javascript:x)'],
+            'tab in a quoted url'   => ["background: url('java\tscript:x')", 'url(java\tscript:x)'],   // a browser drops the tab when it reads the URL
+            'newline in quoted url' => ["background: url('java\nscript:x')", 'url(java\nscript:x)'],
             'url with parens'       => ['background: url(javascript:alert(1))', 'url(javascript:alert(1)'],   // an unquoted url() ends at the first ), as in CSS
             'data url'              => ['background: url(data:image/svg+xml,<svg/>)', 'url(data:image/svg+xml,<svg/>)'],
             'vbscript url'          => ['background: url(vbscript:x)', 'url(vbscript:x)'],

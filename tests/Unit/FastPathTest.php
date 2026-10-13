@@ -164,6 +164,7 @@ final class FastPathTest extends HtmlSecurityCheckTestCase
             'style with a function'   => ['<p style="width: expression(1)">'],
             'style with an escape'    => ['<p style="x: \61">'],
             'style with behavior'     => ['<p style="behavior: x">'],
+            'style with ms-behavior'  => ['<p style="-ms-behavior: x">'],
             'style with a reference'  => ['<p style="x: &#40;">'],
             'style with an at-rule'   => ['<p style="@import x">'],
             'unquoted value'          => ['<p class=x>'],

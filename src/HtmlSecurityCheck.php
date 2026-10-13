@@ -169,7 +169,7 @@ final class HtmlSecurityCheck
 
     // CSS that ran script in some browser, hides what the rest of the stylesheet says, or leaks page data:
     // backslash escapes (\6a avascript), @import, the image()/image-set()/src() URL functions,
-    // IE expression() and behavior: (as the property name, so scroll-behavior passes), Firefox -moz-binding,
+    // IE expression() and behavior: or -ms-behavior: (as the property name, so scroll-behavior passes), Firefox -moz-binding,
     // and the two selectors that fire on page data so a url() can report it: [attr^=value] with ^= $= *=
     // and @font-face unicode-range.
     // The selector passes on style, src and class, which hold layout, image addresses and class names, never a
@@ -178,13 +178,14 @@ final class HtmlSecurityCheck
     // The selector's name run stops at the next [ and is possessive, so a run of brackets or of letters costs
     // one step; a plain * would backtrack across everything after a [ with no ]= behind it. The run also
     // takes *| (the any-namespace prefix), since [*|value^= matches the same attribute
-    private const CSS_FORBIDDEN = '/\\\\|@import|image\(|image-set\(|src\(|expression\(|-moz-binding|(?<![a-z0-9-])behavior\s*:|\[(?!\s*+(?:(?:\*|[a-z0-9_-]*+)\|)?+(?:style|src|class)\s*+[\^$*]=)(?:[^\]=^$*\[]++|\*\|)*+[\^$*]=|unicode-range/i';
+    private const CSS_FORBIDDEN = '/\\\\|@import|image\(|image-set\(|src\(|expression\(|-moz-binding|(?<![a-z0-9-])(?:-ms-)?behavior\s*:|\[(?!\s*+(?:(?:\*|[a-z0-9_-]*+)\|)?+(?:style|src|class)\s*+[\^$*]=)(?:[^\]=^$*\[]++|\*\|)*+[\^$*]=|unicode-range/i';
 
     // a backslash inside a quoted url() argument: an escape there still spells a scheme, url("\6a avascript:")
     private const CSS_URL_ESCAPE = '/url\(\s*+["\'][^"\')\\\\]*+\\\\/i';
 
-    // every url( in CSS, capturing what is inside up to the closing quote, paren or whitespace
-    private const CSS_URL = '/url\(\s*+["\']?+\s*+([^"\')\s]*)/i';
+    // every url( in CSS, capturing a quoted argument up to its closing quote, whitespace included, since the
+    // scheme is read with tabs and newlines dropped (url("java\tscript:")), and an unquoted one up to the paren or whitespace
+    private const CSS_URL = '/url\(\s*+(?|"([^"]*+)|\'([^\']*+)|([^"\')\s]*+))/i';
 
     // the longest run of well-formed UTF-8 from the start; the byte after the match is the first bad one
     private const UTF8_PREFIX = '/\A(?:[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2})*+/';
@@ -433,7 +434,7 @@ final class HtmlSecurityCheck
         $url = '(?:(?:' . implode('|', array_map(preg_quote(...), $schemes)) . '):)?+' . $value;
         // CSS with none of the punctuation the CSS check reads (\ escapes, ( every function, @ at-rules, [ selectors,
         // & references) and none of the three bare words on CSS_FORBIDDEN
-        $css = '(?:(?!-moz-binding|(?<![a-z0-9-])behavior\s*+:|unicode-range)[^"\\\\()@\[&<>])*+';
+        $css = '(?:(?!-moz-binding|(?<![a-z0-9-])(?:-ms-)?behavior\s*+:|unicode-range)[^"\\\\()@\[&<>])*+';
         // style="css" when styles are on; a URL attribute with a url; a common name or aria-*, with a value
         $urlNames   = array_diff(self::URL_ATTRIBUTES, self::FORM_ATTRIBUTES);
         // only the names editors write most, and only while they are listed: a tag with any other name gets the same
