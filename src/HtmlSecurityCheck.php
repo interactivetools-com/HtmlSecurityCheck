@@ -172,10 +172,13 @@ final class HtmlSecurityCheck
     // IE expression() and behavior: (as the property name, so scroll-behavior passes), Firefox -moz-binding,
     // and the two selectors that fire on page data so a url() can report it: [attr^=value] with ^= $= *=
     // and @font-face unicode-range.
+    // The selector passes on style, src and class, which hold layout, image addresses and class names, never a
+    // token: email templates use div[style*="margin: 16px 0"] and Wikipedia img[src*="logo"]. The lookahead
+    // skips those names, with or without a namespace prefix (*|, ns| or |) and spaces around them.
     // The selector's name run stops at the next [ and is possessive, so a run of brackets or of letters costs
     // one step; a plain * would backtrack across everything after a [ with no ]= behind it. The run also
     // takes *| (the any-namespace prefix), since [*|value^= matches the same attribute
-    private const CSS_FORBIDDEN = '/\\\\|@import|image\(|image-set\(|src\(|expression\(|-moz-binding|(?<![a-z0-9-])behavior\s*:|\[(?:[^\]=^$*\[]++|\*\|)*+[\^$*]=|unicode-range/i';
+    private const CSS_FORBIDDEN = '/\\\\|@import|image\(|image-set\(|src\(|expression\(|-moz-binding|(?<![a-z0-9-])behavior\s*:|\[(?!\s*+(?:(?:\*|[a-z0-9_-]*+)\|)?+(?:style|src|class)\s*+[\^$*]=)(?:[^\]=^$*\[]++|\*\|)*+[\^$*]=|unicode-range/i';
 
     // a backslash inside a quoted url() argument: an escape there still spells a scheme, url("\6a avascript:")
     private const CSS_URL_ESCAPE = '/url\(\s*+["\'][^"\')\\\\]*+\\\\/i';

