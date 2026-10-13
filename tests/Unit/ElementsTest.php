@@ -81,8 +81,16 @@ final class ElementsTest extends HtmlSecurityCheckTestCase
             'xsl'                  => ['xsl:template', false],
             'other prefix'         => ['x:timer', false],
             'prefix alone'         => ['o:', false],
-            'word xml block'       => ['xml', false],
+            'word xml block'       => ['xml', true],
         ];
+    }
+
+    public function testWordXmlBlockPassesButCannotBeBound(): void
+    {
+        $this->assertAccepts('<!--[if gte mso 9]><xml><w:WordDocument><w:View>Normal</w:View></w:WordDocument></xml><![endif]--><p>x</p>');
+        // old IE showed a data island as HTML only through these three attributes
+        $this->assertRejects('<xml id="x"><b>a</b></xml><span datasrc="#x" datafld="b" dataformatas="html"></span>', 'attribute-not-allowed', 'datasrc');
+        $this->assertRejects('<xml><img src=x onerror=alert(1)></xml>', 'event-handler', 'onerror');   // its content is checked like the rest
     }
 
     public function testWordElementAttributesAreChecked(): void

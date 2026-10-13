@@ -318,9 +318,15 @@ Two things refuse those pastes whatever the list says. VML's `on` attribute
 (`<v:shadow on="t">`, in 14 of the files) falls under the `on*` rule, and an exception there
 is not worth what it saves. Word's clipboard images point at
 `file:///.../msohtmlclip1/clip_image001.png`, which fails the URL check. Names that only
-appear inside `<xml>` blocks (`progid`, `spidmax`, the latent-style names) need nothing,
-since `<xml>` is refused, and the ones that hold a URL or markup (`althref`, `sigprovurl`,
-`equationxml`, `addlxml`) appear in no paste and stay out.
+appear inside `<xml>` blocks (`progid`, `spidmax`, the latent-style names) are not on the
+list, and the ones that hold a URL or markup (`althref`, `sigprovurl`, `equationxml`,
+`addlxml`) appear in no paste and stay out.
+
+`<xml>` itself passes (settled 2026-10-13): Word puts its settings block on the clipboard as
+`<!--[if gte mso 9]><xml>...</xml><![endif]-->`, a browser makes an unknown element of it
+and its content is checked like the rest, and old IE showed a data island as HTML only
+through `datasrc`, `datafld` and `dataformatas`, which are refused. The check reads real-world
+HTML, not valid HTML, so a harmless tag Word writes is no reason to refuse a paste.
 
 `xmlns:*` takes only Office namespaces because of pages served as XHTML, where
 `<o:script xmlns:o="http://www.w3.org/1999/xhtml">` is a script (the same trick as
@@ -479,6 +485,10 @@ real login form, restyle the site header, or turn off a `contain: paint` box the
 around the content (`div[style*=contain] { contain: none }`). A site that relies on that box
 turns `$allowStyleElement` off and keeps inline styles. One switch for both was rejected for
 that reason.
+
+The box does not hold today: end tags are never checked, so a `</div>` in the content closes
+the page's wrapper and what follows is outside it (found 2026-10-13). The README no longer
+recommends `contain: paint`; it lists end tags under what the check does not check.
 
 ## Iframes: A Host List
 

@@ -18,7 +18,7 @@ use function sprintf;
  * sentence with one %s where detail goes, and message is the two combined. To translate,
  * run the template through your translation function and sprintf() the detail back in:
  *
- *     echo sprintf(t($violation->template), htmlspecialchars($violation->detail));
+ *     echo htmlspecialchars(sprintf(t($violation->template), $violation->detail));
  *
  * TEMPLATES lists every template by code, so a translation system can register all of
  * them up front. detail comes from the content: always one line of valid UTF-8, cut to

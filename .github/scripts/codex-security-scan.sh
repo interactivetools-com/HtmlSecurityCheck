@@ -57,9 +57,10 @@ Firefox or Safari, cannot hide a payload from the check by being read
 differently by the browser's parser than by the tokenizer that checked it,
 and cannot send what is on the page to another host through CSS. The check
 runs the HTML5 tokenizer on the content and checks every start tag as it is
-produced; there is no tree. docs/ai-reference.md lists every rule, allowlist
-and switch and is the specification; docs/internal/design-decisions.md
-records the threat model and what was left out on purpose.
+produced; there is no tree. docs/internal/rules.md lists every rule and is the
+specification; docs/ai-reference.md has the API, the allowlists and the
+switches; docs/internal/design-decisions.md records the threat model and what
+was left out on purpose.
 
 What to look for
 
@@ -127,6 +128,7 @@ what an accepted fragment can actually do.
 PROMPT
 
 codex-security scan . "${paths[@]}" \
+    --knowledge-base docs/internal/rules.md \
     --knowledge-base docs/ai-reference.md \
     --knowledge-base docs/errors.md \
     --knowledge-base docs/internal/design-decisions.md \

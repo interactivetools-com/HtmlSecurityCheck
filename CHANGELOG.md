@@ -15,7 +15,7 @@ rejects anything that could run script in the page it is printed into, with a `R
 - **`HtmlSecurityCheck::check()`** returns a `Result` with `ok` and `errors`, one `Violation`
   per distinct problem, in document order, capped at 50. Nothing throws.
 - **Element allowlist**: the HTML Standard's element index plus the obsolete presentational
-  elements and Word's `o:`, `v:` and `w:` prefixed names. Script, plugin, head-level and
+  elements, Word's `o:`, `v:` and `w:` prefixed names and its `<xml>` settings block. Script, plugin, head-level and
   tokenizer-switching elements are refused with no switch.
 - **Attribute allowlist**: the HTML Standard's attribute index minus `srcdoc` and `is`, plus the
   obsolete presentational attributes, `aria-*` and Word's own; `on*` and unknown names are

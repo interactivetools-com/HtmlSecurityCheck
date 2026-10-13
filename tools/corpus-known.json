@@ -537,6 +537,14 @@
     },
     "payloads": {
         "cases": {
+            "4ed3a9247608": {
+                "payload": "<XML ID=\"xss\"><I><B>&lt;IMG SRC=\"javas<!-- -->cript:alert('XSS')\"&gt;</B></I></XML>",
+                "reason": "an old-IE data island with no element bound to it; binding needs datasrc, datafld and dataformatas, which are refused, and the IMG is text"
+            },
+            "f6a5f7a8090b": {
+                "payload": "<XML SRC=\"xsstest.xml\" ID=I></XML>",
+                "reason": "an old-IE data island with no element bound to it; binding needs datasrc, datafld and dataformatas, which are refused"
+            },
             "a630d181f10b": {
                 "payload": "</name>",
                 "reason": "end tags only; a browser drops them"

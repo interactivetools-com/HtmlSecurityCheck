@@ -33,14 +33,14 @@ final class DocsExamplesTest extends TestCase
         $this->assertSame('onclick= event handler attributes are not allowed', $violation->message);
     }
 
-    /** AI reference, Rules: Attributes: duplicate attributes, the first wins */
+    /** docs/internal/rules.md, Rules: Attributes: duplicate attributes, the first wins */
     public function testFirstDuplicateAttributeWins(): void
     {
         $this->assertTrue(HtmlSecurityCheck::check('<a href="https://x" href="javascript:y">')->ok);
         $this->assertFalse(HtmlSecurityCheck::check('<a href="javascript:y" href="https://x">')->ok);
     }
 
-    /** AI reference, Rules: Elements: a refused element is one error with its attributes skipped */
+    /** AI reference, What Is Refused: a refused element is one error with its attributes skipped */
     public function testRefusedElementIsOneError(): void
     {
         $result = HtmlSecurityCheck::check('<script onload="x" src="javascript:1"></script>');
@@ -48,7 +48,7 @@ final class DocsExamplesTest extends TestCase
         $this->assertSame('<script onload="x" src="javascript:1"> is not allowed', $result->errors[0]->message);
     }
 
-    /** AI reference, Rules: URLs: the detail is the name and the decoded value; docs/errors.md says &colon; shows as : */
+    /** AI reference, Error Codes: the detail is the name and the decoded value; docs/errors.md says &colon; shows as : */
     public function testUrlDetailIsDecoded(): void
     {
         $violation = HtmlSecurityCheck::check('<a href="javascript&colon;alert(1)">x</a>')->errors[0];

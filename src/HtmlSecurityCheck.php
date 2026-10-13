@@ -4,9 +4,9 @@ declare(strict_types=1);
 namespace Itools\HtmlSecurityCheck;
 
 // import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
-use function addcslashes, array_diff, array_intersect, array_map, array_values, count, implode, in_array, preg_match, preg_match_all, preg_quote, preg_replace, str_replace, str_starts_with, stripos, strlen, strncasecmp, strpos, strtolower, substr, trim;
+use function addcslashes, array_diff, array_intersect, array_map, array_values, count, implode, in_array, preg_match, preg_match_all, preg_quote, preg_replace, preg_split, str_replace, str_starts_with, stripos, strlen, strncasecmp, strpos, strtolower, substr, trim;
 
-use const PREG_OFFSET_CAPTURE;
+use const PREG_OFFSET_CAPTURE, PREG_SPLIT_NO_EMPTY;
 
 /**
  * Checks rich-text HTML for anything that could run script in a browser and reports every
@@ -47,6 +47,9 @@ final class HtmlSecurityCheck
      * is text to a browser and has no use in content (plaintext, xmp, noembed, noframes).
      * Includes the obsolete presentational elements old content still holds (font, center,
      * strike, big, tt, marquee and friends), since browsers render them without script.
+     * Also xml, the settings block Word puts on the clipboard: an unknown element to a browser,
+     * whose content is checked like the rest. Old IE ran one only through datasrc, datafld and
+     * dataformatas, which are not on the attribute list.
      * style, iframe and the form elements are not here: they pass by their switch ($allowStyleElement,
      * $allowEmbeds, and $allowForms with FORM_ELEMENTS).
      */
@@ -61,7 +64,7 @@ final class HtmlSecurityCheck
         'nav', 'nobr', 'ol', 'p', 'param', 'picture', 'pre', 'progress', 'q',
         'rb', 'rp', 'rt', 'rtc', 'ruby', 's', 'samp', 'search', 'section', 'slot', 'small', 'source', 'spacer', 'span', 'strike', 'strong', 'sub', 'summary', 'sup',
         'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'time', 'tr', 'track', 'tt',
-        'u', 'ul', 'var', 'video', 'wbr',
+        'u', 'ul', 'var', 'video', 'wbr', 'xml',
     ];
 
     /**

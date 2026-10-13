@@ -10,16 +10,7 @@ Contents:
 - [API](#api) - check(), rules(), the switches, Result, Violation
 - [Usage Pattern](#usage-pattern)
 - [Error Codes](#error-codes)
-- [How a Check Runs](#how-a-check-runs)
-- [Rules: Bytes](#rules-bytes)
-- [Rules: Elements](#rules-elements)
-- [Rules: Attributes](#rules-attributes)
-- [Rules: URLs](#rules-urls)
-- [Rules: Iframes](#rules-iframes)
-- [Rules: CSS](#rules-css)
-- [Rules: Text That Is Not Markup](#rules-text-that-is-not-markup)
-- [Rules: Unclosed Markup](#rules-unclosed-markup)
-- [What the Tokenizer Sees](#what-the-tokenizer-sees)
+- [What Is Refused](#what-is-refused) - every rule in short, Word pastes, fixing a rejection
 - [Rule Tables](#rule-tables)
 - [Limits](#limits)
 - [Constraints and Gotchas](#constraints-and-gotchas)
@@ -29,14 +20,13 @@ Contents:
 ## What HtmlSecurityCheck Is
 
 HtmlSecurityCheck checks rich-text HTML (WYSIWYG output, HTML fields, API input) and rejects it if
-it could run script in the page it is printed into, **with a list of reasons**. The content is
-**never modified**: there is no cleaned output, and the caller stores the original string or
-refuses the save.
+it could run script in the page it is printed into, send the page's data to another host, or
+mislead the visitor, **with a list of reasons**. The content is **never modified**: there is
+no cleaned output, and the caller stores the original string or refuses the save.
 
 It runs the HTML5 tokenizer on the content and checks each start tag as it comes out. No tree
 is built, so the tags and attributes it checks are the ones a browser reads from the same
-bytes. Elements and attribute names are allowlists, so a name it has never seen is refused.
-Attribute values get the URL scheme and CSS checks.
+bytes.
 
 ```php
 use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
@@ -182,270 +172,62 @@ Every code, its template, and what `detail` holds. Templates are `Violation::TEM
 Details longer than 80 characters are cut at 80 and end with `...`. Newlines and other
 control characters inside a detail are escaped (`\n`), so a detail is always one line.
 
-## How a Check Runs
+## What Is Refused
 
-1. **Bytes.** The whole string is checked for invalid UTF-8, then for C0 control characters
-   other than tab, LF and CR. Either failure is the only error and nothing else runs.
-2. **Line endings.** CR and CRLF become LF, as the HTML parser's input step does. Details
-   quote the content after this step.
-3. **Tokens.** The content is tokenized as HTML5 and every start tag is checked as it is
-   produced. Text, comments and end tags are never checked, with three exceptions: the text
-   inside `<style>` is checked as CSS; a `<` inside the text of `<style>`, `<iframe>` or
-   `<textarea>`, or inside a comment that is not `<!-- -->`, reports `less-than-in-text`; and
-   the markup inside a `<!--[if ...]> ... <![endif]-->` conditional comment gets the same rules
-   as the content around it. Runs
-   of text and of tags whose every attribute a regex
-   proves safe (a listed element, double-quoted values with no character reference but
-   `&amp;`, no scheme but a listed one, no CSS construct the CSS check reads) are stepped over
-   without being tokenized; a run the regex does not match is tokenized and checked as usual,
-   so the result is the same with `$fastPath` off.
-4. **Per start tag**, in this order: the element must be allowed, or the tag reports
-   `element-not-allowed` and its attributes are skipped. An `<iframe>` then has its `src` host
-   checked. Then each attribute: an `on*` name reports `event-handler`; a name not on the
-   allowlist reports `attribute-not-allowed`; `style` is checked as CSS; every other value has
-   its URL scheme checked.
-5. **Unclosed markup.** If the content ended inside a tag, a comment, a doctype or a raw-text
-   element, `unclosed-markup` is added last.
-6. **Cap.** The check stops after `$maxErrors` distinct errors.
+Element names, attribute names, iframe hosts and the schemes on URL attributes are
+allowlists: a name the check does not know is refused. The exact rules are the constants and
+comments in `src/HtmlSecurityCheck.php`; the [Rule Tables](#rule-tables) are generated from
+them.
 
-## Rules: Bytes
+- **Elements.** `ELEMENTS` pass. `<style>` passes while `$allowStyleElement` is set,
+  `<iframe>` while `$allowEmbeds` is set and its host is listed, `FORM_ELEMENTS` while
+  `$allowForms` is set, and Word's `o:`, `v:` and `w:` names always. Everything else is
+  refused on purpose: `script`, `noscript`, `template`, `svg`, `math`, `object`, `embed`,
+  `applet`, `base`, `link`, `meta`, `html`, `head`, `body`, `title`, and custom
+  elements (`<my-widget>`), which a page script can define. A refused tag is one error; its
+  attributes are not checked.
+- **Attributes.** A name starting with `on` is `event-handler`. A name passes when it is in
+  `ATTRIBUTES`, starts with an entry in `ATTRIBUTE_PREFIXES` (`aria-`, `o:`, `v:`, `w:`), is
+  an `xmlns:*` whose value starts with an entry in `OFFICE_NAMESPACES`, or is in
+  `FORM_ATTRIBUTES` while `$allowForms` is set. Refused with no switch: `data-*`, `srcdoc`,
+  `is`, and framework directives (`x-init`, `@click`, `hx-get`), since a page's own
+  JavaScript can run code from them.
+- **URLs.** On `URL_ATTRIBUTES` a value must have no scheme or one in `$urlSchemes`; every URL
+  in a `srcset` or `ping` list is checked. The scheme is read as a browser reads it, entities
+  decoded and whitespace dropped, so `jav&#x09;ascript:` is `javascript:`. `data:image/...`
+  passes on `<img src>` only. Every other attribute value is refused only when it starts with
+  a scheme in `SCRIPT_SCHEMES` (`javascript:`).
+- **Iframes.** `src` must be `https://`, `http://` or `//`, then a host in `$iframeHosts`
+  matched whole (`player.vimeo.com` is not `vimeo.com`; no port, no subdomains), then the
+  end or `/`, `?` or `#`. Otherwise `iframe-host`.
+- **CSS**, in `style` attributes and `<style>` text, is the one check that lists what it
+  refuses: `\`, `@import`, `image(`, `image-set(`, `src(`, `expression(`, `behavior:`,
+  `-ms-behavior:`, `-moz-binding`, `unicode-range`, and `[attr^=`, `$=` or `*=` on any
+  attribute but `style`, `src` and `class`. `url()` must be relative or in `CSS_URL_SCHEMES`
+  (`http`, `https`). Comments and quoted strings are skipped for the token list. Everything
+  else passes: `position: fixed`, `mso-*`, `@media`, `@font-face`.
+- **Parser differences.** Invalid UTF-8 or a control character other than tab, LF and CR is
+  the only error reported. A `<` inside `<style>`, `<iframe>`, `<textarea>` or a comment that
+  is not `<!-- -->` (`<?php ?>`, `<!x>`) is `less-than-in-text`. A tag, quoted value,
+  comment or `<style>` left open at the end is `unclosed-markup`, always the last error.
+- **Not checked.** End tags, text and comments, except the markup inside a
+  `<!--[if ...]> ... <![endif]-->` conditional comment, which gets the same rules as the rest.
 
-- **`not-utf8`**: any byte sequence that is not well-formed UTF-8, including overlong forms,
-  surrogates (`\xED\xA0\x80`) and code points above U+10FFFF. A UTF-8 byte order mark is a
-  valid character and passes.
-- **`control-character`**: any of U+0000 to U+001F except tab (U+0009), LF (U+000A) and CR
-  (U+000D), anywhere in the content, including inside a tag name or attribute value. Delete
-  (U+007F), the C1 range (U+0080 to U+009F) and Unicode line separators pass. A browser would
-  turn a NUL inside `<scr\0ipt>` into `<scr�ipt>`, a harmless tag; the rule is stricter and
-  refuses the byte wherever it is.
+### Word and Email Pastes
 
-## Rules: Elements
+Pass: `class="MsoNormal"`, `mso-*` styles, `<o:p>`, `<v:shape>`, `xmlns:o` with an Office
+namespace, `<?xml:namespace ...>`, Word's `<!--[if gte mso 9]><xml>...</xml><![endif]-->`
+settings block, and `<!--[if mso]><table>...</table><![endif]-->`. Refused: a whole pasted
+page (`<html>`, `<head>`, `<body>`), Word's `<style><!-- ... --></style>` (a `<` inside
+`<style>`), and images at `file:` or `blob:` URLs, which exist only on the editor's computer.
 
-For every start tag, by its lowercased name:
+### Fixing a Rejection
 
-- In `ELEMENTS` (the [elements table](#rule-tables)): passes.
-- `style`: passes when `$allowStyleElement` is set. Its text content is then checked as CSS.
-- `iframe`: passes when `$allowEmbeds` is set, then its `src` is checked, see
-  [Iframes](#rules-iframes).
-- In `FORM_ELEMENTS`: passes when `$allowForms` is set.
-- A Word name (`o:`, `v:` or `w:`, then a letter, then letters and digits: `o:p`, `v:shape`,
-  `w:sdtPr`): passes.
-- Anything else: `element-not-allowed` with the tag as written. The tag's attributes are not
-  checked, so `<script onload="x" src="javascript:1">` is one error.
-
-A `<!DOCTYPE ...>` anywhere reports `element-not-allowed` with the doctype as written.
-
-Not allowed on purpose, so never add them to content to "fix" a rejection:
-
-- Script and script surfaces: `script`, `noscript`, `template`, `svg`, `math`.
-- Plugins: `object`, `embed`, `applet`.
-- Page-level: `html`, `head`, `body`, `title`, `meta`, `base`, `link`, `frameset`, `frame`.
-- Elements whose content is text to a browser and has no use in content: `plaintext`, `xmp`,
-  `noembed`, `noframes`.
-- Custom elements (`my-widget`, `product-card`): a page script can define one and run its own
-  code for every copy in the content.
-- Names with a namespace prefix (`t:set`, `svg:rect`, `xsl:template`). The exception is Word's
-  `o:`, `v:` and `w:` (`o:p`, `v:shape`, `w:sdt`), which pass with any name after the colon as
-  unknown elements a browser does nothing with; their attributes get the normal rules.
-
-End tags are never checked: `</script>` with no start tag is fine. Text is never checked:
-`&lt;script&gt;` is text to a browser and to the check. Comments are not checked:
-`<!-- <script>alert(1)</script> -->` passes. The one exception is a conditional comment:
-the markup inside `<!--[if IE]> ... <![endif]-->` gets the same rules as the rest, see
-[Text That Is Not Markup](#rules-text-that-is-not-markup). A `<?import ...>` instruction,
-which bound a behavior to a prefix in IE 5.5 to 9, reports `element-not-allowed` as written.
-
-## Rules: Attributes
-
-For every attribute on an allowed element, by its lowercased name, in this order:
-
-1. A name starting with `on` (`onclick`, `oncommand`, `onfoo`, `on`): `event-handler`. No
-   allowed attribute starts with `on`, and the prefix covers handlers added in future
-   browsers. The name is checked as written: `on&#99;lick` is refused although a browser
-   would not decode it either.
-2. A name not on the allowlist: `attribute-not-allowed`. A name passes when it is
-   - in `ATTRIBUTES`, on any element: the HTML Standard's attribute index minus `srcdoc`,
-     `formaction` and `is`, plus `role`, `xml:lang`, `xml:space`, the obsolete presentational
-     attributes (`align`, `bgcolor`) and Word's own (`coordsize`, `sdttag`). See
-     [Rule Tables](#rule-tables)
-   - prefixed by `aria-`, `o:`, `v:` or `w:` (`ATTRIBUTE_PREFIXES`)
-   - `xmlns:` and any prefix, with a value starting with an entry in `OFFICE_NAMESPACES`. Any
-     other value is reported with the name; in a page served as XHTML,
-     `<o:script xmlns:o="http://www.w3.org/1999/xhtml">` is a script
-   - `formaction` (`FORM_ATTRIBUTES`) while `$allowForms` is set; it is then a URL attribute
-3. `style` while `$allowStyleAttribute` is off: `attribute-not-allowed`. With it on, the value is
-   checked as CSS, see [CSS](#rules-css).
-4. Every other attribute: the value's URL scheme is checked, see [URLs](#rules-urls).
-
-Refused, among others: `data-*` (HTMX `data-hx-get`, Stimulus `data-action`), `srcdoc`, `is`,
-framework directives (`x-init`, `@click`, `:href`, `hx-get`, `ng-click`, `_`, `script`),
-`xlink:href`, bare `xmlns`, Mailchimp's `mc:edit`, and made-up names. A page's own JavaScript
-can run code from these; a browser never does.
-
-Duplicate attributes: the first wins and the rest are dropped, as in browsers. So
-`<a href="https://x" href="javascript:y">` passes and the reverse order rejects.
-
-## Rules: URLs
-
-The scheme of a value is read the way a browser reads a URL: ASCII whitespace and control
-characters are removed from the whole value first (so `java\nscript:` and `jav&Tab;ascript:`
-are `javascript:`), then the value must start with a letter followed by letters, digits,
-`+`, `-` or `.` and a colon. Attribute values arrive entity-decoded, so `javascript&colon;`
-and `&#106;avascript:` are `javascript:` too. A value with no scheme (a relative path,
-`/root`, `//host`, `#id`, `?query`, an empty string, `/time/12:30`) has nothing to check.
-
-- On the attributes in `URL_ATTRIBUTES` (`href`, `src`, `action`, `formaction`, `poster`,
-  `ping`, `srcset`, `cite`, `longdesc`, `background`), the scheme must be in `$urlSchemes`:
-  `http`, `https`, `mailto`, `tel` by default. Case-insensitive. `data:`, `vbscript:`, `ftp:`,
-  `file:` and every other scheme reject with `url-scheme-not-allowed`. One exception:
-  `<img src>` also accepts `data:image/...`, any image type, `svg+xml` included, because a
-  browser decodes an `img` resource as a picture and nothing else. `data:` on `srcset`,
-  `poster` or `href`, in an `<iframe>` or in CSS `url()` still rejects.
-- On every other attribute, only the schemes in `SCRIPT_SCHEMES` reject: `javascript`. A
-  browser ignores `javascript:` in `title=` or `value=`, but a page script that copies the
-  value into a link or into `location` runs it. `vbscript:` and `data:` pass there because
-  no current browser runs either as the page; `title="Note: x"`, `aria-label="noon:sharp"` and
-  `data="Note: x"` pass because they are not URLs.
-
-The detail is the attribute name and the decoded value: `href="javascript:alert(1)"`.
-
-`srcset` and `ping` hold a list of URLs, split at whitespace and commas, and every URL in
-the list is checked: `srcset="a.png 1x, javascript:alert(1) 2x"` rejects, and the detail is
-the whole attribute. A comma inside a URL splits it too, so `srcset="x.php?a=1,b:2 1x"`
-rejects for a `b:` scheme; a browser reads it as one URL.
-
-## Rules: Iframes
-
-An `<iframe>` passes only when `$allowEmbeds` is set (else `element-not-allowed`) and its
-`src`, after whitespace is removed, matches `https://`, `http://` or `//`, then a host in
-`$iframeHosts` (case-insensitive, whole host), then the end of the value or `/`, `?` or `#`.
-Anything else reports `iframe-host` with the `src` as the detail, or `(no src)` when the
-attribute is missing or empty.
-
-So `https://www.youtube.com/embed/x`, `//www.youtube.com/embed/x` and
-`https://WWW.YOUTUBE.COM` pass with the default list. `https://www.youtube.com:8080/x`,
-`https://www.youtube.com@evil.example/`, `https://evil.www.youtube.com/`,
-`https://www.youtube.com.evil.example/`, `/uploads/page.html`, `javascript:x`, `data:text/html,x`
-and an `<iframe>` with only `srcdoc` all reject. An empty `$iframeHosts` rejects every
-`<iframe>`.
-
-The other attributes on the `<iframe>` are still checked (`onload` rejects, `srcdoc`
-rejects). Its content is raw text to a browser, so `<iframe src="..."><script>x</script></iframe>`
-holds no script tag.
-
-## Rules: CSS
-
-Applies to every `style` attribute value (entity-decoded) and to the text inside every
-`<style>` element (as written, no entity decoding, as in a browser). Comments and quoted
-strings are removed first (see below), then two checks run, case-insensitive:
-
-1. Any of these tokens rejects with `css-not-allowed` and the token as the detail: a
-   backslash `\`, `@import`, `image(`, `image-set(`, `src(`, `expression(`,
-   `-moz-binding`, `behavior:` or `-ms-behavior:` as a property name (whitespace before the
-   colon allowed; `scroll-behavior:` and `overscroll-behavior:` pass), an attribute selector using `^=`,
-   `$=` or `*=` (`[value^=`, `[ value ^=`) on any name but `style`, `src` and `class`, and
-   `unicode-range`. The three names pass with spaces around them and with a namespace
-   prefix (`[*|style^=`, `[|src$=`); a longer name that starts or ends with one does not
-   (`[styles^=`, `[srcset*=`, `[data-src*=`).
-2. Every `url(` is read up to its closing quote, or when unquoted up to `)` or whitespace, and
-   its scheme, read as in [URLs](#rules-urls) with tabs and newlines dropped, must be absent or
-   in `CSS_URL_SCHEMES`: `http`, `https`. So
-   `url(images/bg.png)`, `url(/x.png)`, `url(//cdn.example/x.png)`, `url(#clip)` and
-   `url("https://cdn.example/x.png")` pass; `url(javascript:x)`, `url(data:image/svg+xml,...)`,
-   `url(vbscript:x)`, `url(mailto:x)`, `url(ftp://x)` and `url("java<tab>script:x")` reject, with the `url(` and its
-   target as the detail. This check reads the text as written, comments and strings included, so a quoted
-   target is still checked. A backslash inside a quoted `url()` argument also rejects, since
-   an escape there still spells a scheme: `url('\6a avascript:x')` reports `url('\`.
-
-The backslash ban is what makes the regex enough: with no escape syntax there is no way to
-spell `expression(` or `url(` that the regex reads differently from a browser. The two
-selectors and `unicode-range` are the CSS features that fire on page data: `[value^="a"]` tests
-an input's value one character at a time, and a font with `unicode-range` loads only when a
-character is on the page, so either plus a `url()` to another host reports what the page
-holds. `style`, `src` and `class` hold layout, image addresses and class names, never a
-token, so substring selectors on them pass (`div[style*="margin: 16px 0"]` in email
-templates, `img[src*="logo"]`). Exact-match selectors (`[type=text]`, `[href="https://x/"]`), `~=`, `|=`, presence
-selectors, `@font-face` without `unicode-range`, `@media`, `@keyframes`, `:hover`,
-`!important`, `position: fixed` and vendor properties (`mso-*`) are not checked.
-
-Removal reads left to right as a CSS tokenizer does: a comment runs from `/*` to `*/` or
-the end of the text, and a string from its quote to the matching quote or a bare newline.
-Inside a string `\` escapes the next character, or up to six hex digits and one whitespace
-after them, newline included, so `"\a` and a newline do not end the string. An unquoted
-`url()` runs to its closing `)` before either is looked for, so a `/*` or a quote inside it
-is part of the URL, not the start of a comment or string. So a backslash in a comment
-banner, `content: '\a0'` and a font name like `'\@Yu Mincho'` pass, and `content: '/*'`
-cannot hide what follows it. A comment is dropped without leaving a space, as a browser
-drops it, so `[value/**/^=` still rejects and reports `[value^=`. Past the PCRE backtrack
-limit (megabytes inside one comment or string) removal is skipped and the text is checked
-as written, which is stricter. A block the token scan cannot finish within the limit
-(megabytes of `x*|` pairs inside one `[`) rejects with `css-not-allowed` and its first 80
-characters as the detail; it is never passed unchecked.
-
-## Rules: Text That Is Not Markup
-
-The content of `<style>`, `<iframe>` and `<textarea>`, and a comment that is not `<!-- -->`
-(`<?php ... ?>`, `<!x ...>`, `</ x>`, `<![CDATA[...]]>`, all ending at the first `>`), is
-text to a browser. A `<` inside any of them reports `less-than-in-text`, with the text from
-that `<` to the end of the block as the detail. The bytes as written are checked, so `&lt;`
-in a `<textarea>` passes, and so does `<?xml:namespace prefix = o />` from a Word paste.
-
-A conditional comment, `<!--[if mso]> ... <![endif]-->`, is a comment to every browser since
-IE 10, but the IE engine inside old Windows programs and Outlook's Word engine read the
-markup inside it. That markup gets the same rules as the content around it, from the first
-`]>` to `<![endif]`, or to the end of the comment when there is none: an email template's
-`<!--[if mso]><table>...</table><![endif]-->` passes, and
-`<!--[if IE]><script>alert(1)</script><![endif]-->` reports `element-not-allowed` with
-`<script>`. Ordinary text and everything else inside `<!-- -->` are never checked.
-
-The reason is what happens after the check: `strip_tags()` with an allow list and HTML4-era
-DOM parsers read a tag inside these as live. Content that passed the check stays safe
-through them only if no tag can appear where the check saw text.
-
-## Rules: Unclosed Markup
-
-If the content ends inside a start tag, an end tag, a quoted attribute value, a comment
-(`<!-- x`, `<!-- x --`), a bogus comment (`<?php x`), a doctype, or the text of a raw-text
-element (`<style>`, `<iframe>`, `<textarea>`, `<plaintext>`) with no matching end tag,
-`unclosed-markup` is reported with the unfinished markup as the detail, from where it
-opened to the end of the content. It is always the last error.
-
-A browser drops an unfinished tag at the end of a document. A fragment printed into a page
-is not at the end: the page up to the next quote becomes the attribute value (the URL that
-gets fetched, for `src`), an `onerror=` on the open tag runs once the page's next `>` closes
-it, and the page up to `-->` or `</style>` disappears or becomes CSS.
-
-Not unclosed: a lone `<` or `</` at the end (text), `<p>` with no `</p>` (a tag, closed with
-its `>`), `3 > 2` in text, a self-closing `<img/>`, an empty string.
-
-## What the Tokenizer Sees
-
-The check runs on the HTML5 token stream, so the facts below are what a browser does too.
-Each one is a test in the suite, and the html5lib tokenizer test suite runs against the
-tokenizer with element state switching off.
-
-- Tag and attribute names are ASCII-lowercased and never entity-decoded: `<ScRiPt>` is
-  `script`; `on&#99;lick` is an attribute named `on&#99;lick`.
-- Attribute values are entity-decoded with the HTML5 table (all named references, legacy
-  names without a semicolon, numeric references, `&#x80;` to `&#x9F;` through windows-1252),
-  so the URL and CSS checks see what the browser sees. Text and `<style>` content are not
-  relevant to decoding for the rules except as noted under CSS.
-- `/` inside a tag is a separator: `<p/onclick=x>` is a `p` with `onclick`.
-- Unquoted values end at whitespace or `>`: `<img src=x onerror=alert(1)>` has two attributes.
-- `<a<b href=x>` is a tag named `a<b`, rejected as unknown.
-- `<!-- x --!>` closes a comment; `<!-->` and `<!--->` are empty comments; `<?php ... ?>` and
-  `<![CDATA[...]]>` are comments ending at the first `>`; `</ x>` and `</3>` are comments;
-  `</>` is dropped.
-- `<style>`, `<iframe>`, `<noembed>`, `<noframes>`, `<xmp>`, `<noscript>` and `<script>` hold
-  raw text up to their matching end tag (case-insensitive, the same name); `<title>` and
-  `<textarea>` the same but entity-decoded. A `<img onerror>` inside `<style>` is text, and
-  its `<` is refused (see [Rules: Text That Is Not Markup](#rules-text-that-is-not-markup)).
-  `<noscript>` is raw text because scripting is on in every browser a person uses.
-- `<svg>` and `<math>` content would be tokenized as HTML, not as foreign content; both
-  elements are refused so this never matters.
-- A NUL in a tag or attribute name becomes U+FFFD in a browser; here the byte check refuses
-  it first.
-- Nesting depth is irrelevant: there is no tree, so there is no depth.
+The fix is in the content: [docs/errors.md](https://github.com/interactivetools-com/HtmlSecurityCheck/blob/main/docs/errors.md)
+gives it for every code. Do not strip the refused tags with a regex and save the result, add
+`data-*` values back under another name, or turn the check off for one user; tell the editor
+what the message says. For `data-*`, use a `class` or `id`, and change the page script that
+read the value.
 
 ## Rule Tables
 
@@ -461,7 +243,7 @@ center cite code col colgroup data dd del details dfn dialog dir div dl dt em fi
 footer h1 h2 h3 h4 h5 h6 header hgroup hr i img ins kbd li listing main map mark marquee menu meter
 multicol nav nobr ol p param picture pre progress q rb rp rt rtc ruby s samp search section slot
 small source spacer span strike strong sub summary sup table tbody td tfoot th thead time tr track
-tt u ul var video wbr
+tt u ul var video wbr xml
 ```
 <!-- /rules:elements -->
 
@@ -585,18 +367,21 @@ form or the API before the check.
   ```
 - **Names are lowercased before matching**, so element and attribute rules are
   case-insensitive; URL schemes, hosts and CSS tokens are matched case-insensitively too.
-- **The check assumes the content is printed as HTML body content.** Printed inside a
-  `<script>`, a `<style>`, an attribute value or a `<textarea>`, any text is something else,
-  and the rules do not apply.
-- **Not checked:** whether the HTML is valid or well nested, `id` and `name` (DOM
-  clobbering), `target`, external images and other tracking loads, `position: fixed` and other
-  layout overlays, content length, and what the text says.
-- **No `data-*` and no custom elements.** A page script can run code from either. Use `class`
-  or `id` for a custom value.
-- **`data:` images pass on `<img src>`** (any image type, `svg+xml` included). Every other
-  `data:` URL is refused.
+- **The check assumes the content is printed as HTML body content**, between ordinary tags
+  such as `<div>` or `<td>`. Printed inside `<script>`, `<style>`, `<textarea>`, `<title>`,
+  inline SVG or an attribute value, any text is something else, and the rules do not apply.
+- **Not checked:** end tags (a `</div>` in the content can close the page's own wrapper),
+  whether the HTML is valid or well nested, `id` and `name` (DOM clobbering), `target`,
+  external images and other tracking loads, `position: fixed` and other layout overlays,
+  content length, and what the text says.
+- **Check stored content before printing it.** HTML from an import, an email or a save from
+  before the check was never checked. A check costs under 0.04 ms for a typical page, so
+  checking on every view is fine. To show staff a rejected record, print it in
+  `<iframe sandbox srcdoc="<?= htmlspecialchars($html) ?>"></iframe>`.
 - **Switches are process-wide.** They are static properties, so a change in one request
-  handler affects every later `check()` in the same process. Set them at startup.
+  handler affects every later `check()` in the same process. Set them once in a file every
+  entry point includes, so the save and the page that prints agree. Add a host with
+  `HtmlSecurityCheck::$iframeHosts[] = 'media.example.com';` to keep the defaults.
 - **`Tokenizer`, `Token` and `CharacterReferences` are internal.** They are HtmlSecurityCheck's
   own parser, marked `@internal`, and can change between releases. The public API is
   `HtmlSecurityCheck`, `Result` and `Violation`.
