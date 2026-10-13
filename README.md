@@ -11,20 +11,6 @@ HtmlSecurityCheck checks HTML from any source (an editor, a web form, an email, 
 and rejects it if it could run script, with a list of reasons that quote the tag or attribute
 at fault. It never rewrites the content: what passes is what you store and what you show.
 
-## Why Reject Instead of Clean
-
-A sanitizer rewrites everything it touches: it closes tags, re-encodes entities, and drops
-every element it has no definition for, which for most PHP sanitizers means every HTML5
-element. What comes back is not what the editor saved, and nobody can explain the difference
-to the person who typed it. HtmlSecurityCheck refuses the content instead and names the problem.
-Everything else passes as it was saved. The elements and attributes it accepts come from the
-HTML Standard's own lists.
-
-It works the way a browser does: it runs the HTML5 tokenizer on the content and checks each
-tag as it comes out. There is no tree and no second parse, so the tags and attributes it
-sees are the ones a browser sees, and memory is a copy of the content plus the current
-token, about twice the content for ordinary markup.
-
 ## Quick Start
 
 Requires PHP 8.1+. No extensions, no dependencies.
@@ -80,72 +66,71 @@ HtmlSecurityCheck::$urlSchemes          = ['http', 'https', 'mailto', 'tel'];   
 
 ## What It Blocks
 
-HTML reaches a stored field from many directions: a form a visitor filled in, an incoming
-email, an import, a feed or a supplier's data, a plugin's own query, a restored backup, an API
-call, and a staff member typing in the editor. The check does not know or care which. It takes
-a string and answers one question: printed into the body of a page on your own site, where the
-page's own scripts run, could this run script? That page may be public, or the admin page where
-staff read what a form or an email brought in. The attack is stored XSS: one `<script>` in a
-field runs for every visitor and every admin who opens the page, with their session.
+The check answers one question: printed into the body of a page on your site, could this HTML
+run script? The attack it stops is stored XSS, where one `<script>` in a field runs for every
+visitor and every staff member who opens the page, with their session.
 
-So there are two places to call it: at the save, to refuse the content with a reason, and on
-stored content before an editor or a page shows it, since most of those paths never pass
-through a save handler. The check refuses everything that runs script in a current browser or
-through the page's own scripts, and everything that would let a payload hide from the check
-itself.
+### Script, and Anything That Could Hide It
 
-- **Anything that runs script.** `<script>`, every `on*` attribute, `srcdoc`, and the plugin
-  elements `<object>`, `<embed>` and `<applet>`, which load a document that runs script of its
-  own. On the attributes browsers read as URLs (`href`, `src`, `action`, `poster` and the rest),
-  only `http:`, `https:`, `mailto:`, `tel:` or no scheme at all: `data:` is a whole document,
-  and an unknown scheme asks the visitor's machine to open whatever program is registered for
-  it. The one exception is `data:image/...` on `<img src>`, which a browser shows as a picture
-  and nothing else. `javascript:` is refused at the start of every attribute value, even one
-  the browser ignores, because a page script that copies the value into a link runs it.
-- **Anything the page's own scripts could run.** Alpine runs `x-init`, HTMX sends `hx-get`,
+Elements, attribute names and URL schemes are allowlists: a name or scheme passes only if it
+is on the list.
+
+- **Script.** `<script>`, every `on*` attribute, `srcdoc`, and `<object>`, `<embed>` and
+  `<applet>`, which load a document that runs script of its own. Also `<base>`, which changes
+  where the page's own relative `<script src>` paths load from, and the CSS that ran script in
+  old IE and Firefox: `expression()`, `behavior:` and `-moz-binding`.
+- **URLs.** On the attributes browsers read as URLs (`href`, `src`, `action`, `poster` and the
+  rest), only a scheme from `$urlSchemes` (`http:`, `https:`, `mailto:`, `tel:`) or no scheme.
+  A `data:` URL is a whole document, and an unknown scheme asks the visitor's machine to open
+  whatever program is registered for it. The one exception is `data:image/...` on `<img src>`,
+  which a browser shows as a picture and nothing else. Every attribute value that starts with
+  `javascript:` is refused, even one the browser ignores, because a page script that copies
+  the value into a link runs it.
+- **Code the page's own scripts would run.** Alpine runs `x-init`, HTMX sends `hx-get`,
   Stimulus reads `data-action`, and a page can define `<my-widget>` with code of its own. So
-  every element and attribute must be on a list from the HTML Standard, plus `aria-*` and what
-  Word adds to a paste. `data-*` and custom elements are refused.
-- **Anything that could hide a payload from the check.** The check reads the content the way a
-  browser does, tag by tag, so it refuses every construct that a browser and another parser
-  read differently: `<template>`, `<noscript>`, `<xmp>`, `<plaintext>`, `<svg>`, `<math>`,
-  bytes that are not UTF-8, control characters, backslash escapes in CSS, and a `<` inside
-  `<style>`, `<iframe>`, `<textarea>` or a `<?...>` comment, which is text to a browser but a
-  tag to `strip_tags()` with an allow list. The markup inside a `<!--[if ...]>` conditional
-  comment gets the same rules as the rest, because the IE engine inside old Windows programs
-  and Outlook still read it. A tag, comment or `<style>` that the content ends
-  inside of is refused for the same reason: on its own a browser drops it, but printed into a
-  page, the page up to the next quote becomes the URL that gets fetched.
-- **CSS that reports what the page shows.** `[value^=` and the other substring selectors
+  every element and attribute must be on a list from the HTML Standard, plus `aria-*` and the
+  names Word adds to a paste. `data-*` and custom elements are refused.
+- **Anything that could hide script from the check.** The check passes the content through
+  unchanged, so it refuses everything a browser and another parser read differently:
+  `<template>`, `<noscript>`, `<xmp>`, `<plaintext>`, `<svg>`, `<math>`, bytes that are not
+  UTF-8, control characters, backslash escapes in CSS, and a `<` inside `<style>`, `<iframe>`,
+  `<textarea>` or a `<?...>` comment, which is text to a browser but a tag to `strip_tags()`
+  with an allow list. Markup inside a `<!--[if ...]>` conditional comment gets the same rules
+  as the rest, because Outlook and the IE engine in old Windows programs still read it. A tag,
+  comment or `<style>` left open at the end of the content is refused too: on its own a
+  browser drops it, but printed into a page, the page up to the next quote becomes the URL
+  that gets fetched.
+
+### Not Script, but Refused Anyway
+
+None of these run script. Each is a real attack, and real content almost never uses them, so
+refusing them costs nothing.
+
+- **CSS that sends page data to another host.** `[value^=` and the other substring selectors
   (`^=`, `$=`, `*=`) on any attribute but `style`, `src` and `class`, `unicode-range`,
-  `@import`, and `url()` to anything but `http:`, `https:` or a relative path. None of these
-  run script. Each lets a stylesheet send what is on the page, a CSRF
-  token or a prefilled email address, to another host one character at a time. `expression()`,
-  `behavior:` and `-moz-binding` ran script in browsers nobody runs now; refusing them costs
-  nothing.
+  `@import`, and `url()` to anything but `http:`, `https:` or a relative path. Each lets a
+  `<style>` block send a CSRF token or a prefilled email address to another host.
 - **Markup that belongs to the page, not the content.** `<html>`, `<head>`, `<body>`, `<meta>`,
-  `<link>`, `<title>` and `<base>`. A `<meta http-equiv="refresh">` in a field redirects every
-  visitor, a `<link rel="stylesheet">` loads CSS the check never saw, and `<base>` changes
-  where the page's own relative `<script src>` paths load from.
-- **Things a switch decides.** Forms are off by default: a form runs no script, but it can
-  imitate a login box. Frames are on, from the hosts in `$iframeHosts` only, because a frame
-  from anywhere can show anything. Styles are on, through the CSS check.
+  `<link>` and `<title>`. A `<meta http-equiv="refresh">` sends every visitor to another site,
+  and a `<link rel="stylesheet">` loads CSS the check never saw.
 
-The tokenizer passes the html5lib tokenizer test suite, all but the cases that need a parser
-rather than a tokenizer (a parsed DOCTYPE, the script-data and CDATA states) and four
-lone-surrogate inputs, so tags and attributes come out the way browsers read them. The rules
-are checked against the PortSwigger, html5sec, DOMPurify and OWASP payload lists.
+### Switches
 
-## How the Rules Are Built
+- **Forms are off.** A form runs no script, but it can imitate a login box. `$allowForms`
+  turns them on.
+- **Frames are on, from listed hosts only.** A frame from anywhere can show anything, so the
+  `src` host must be in `$iframeHosts`: YouTube, Vimeo and Google Maps by default.
+- **Styles are on, through the CSS check.** A `style` attribute styles only its own element;
+  a `<style>` element can restyle anything on the page. Each has its own switch,
+  `$allowStyleAttribute` and `$allowStyleElement`.
 
-Every rule is an allowlist except the CSS check.
-
-- **Elements and attributes.** A name passes only if it is on the list: the HTML Standard's
-  names minus the ones above, plus `aria-*` and the names Word adds to a paste.
-- **URLs.** A URL passes only with a scheme from `$urlSchemes`, or no scheme, plus
-  `data:image/` on `<img src>`.
-- **CSS.** A list of the safe parts would be most of CSS, so the check refuses the tokens
-  named above instead. `url()` is the exception: `http:`, `https:` or a relative path only.
+The check runs the HTML5 tokenizer on the content and checks each tag as it comes out. There
+is no tree and no second parse, so the tags and attributes it checks are the ones a browser
+reads, and memory is a copy of the content plus the current token, about twice the content
+for ordinary markup. The tokenizer passes the html5lib tokenizer test suite, all but the cases
+that need a parser rather than a tokenizer (a parsed DOCTYPE, the script-data and CDATA
+states) and four lone-surrogate inputs. The rules are checked against the PortSwigger,
+html5sec, DOMPurify and OWASP payload lists.
 
 ## What It Does Not Check
 
