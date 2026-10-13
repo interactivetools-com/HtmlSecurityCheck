@@ -280,6 +280,9 @@ Left out with no switch:
 - **Custom elements and `is`.** A page can define `<my-widget>` and run its own code for every
   copy in the content.
 - **Mailchimp's `mc:*`.** Only in raw Mailchimp templates. One line when a site needs them.
+- **`<image>`.** Browsers turn it into `<img>` while building the tree, so it would pass as an
+  alias if real content used it. None does: the corpus has it only in payload lists, RSS
+  `<image>` tags in WordPress export files and CSS syntax text on MDN (checked 2026-10-13).
 
 The list is flat because what matters is whether a name is a framework hook, not which element
 carries it; a per-element list is what made HTMLPurifier drop HTML5. Word's names are the
@@ -479,13 +482,16 @@ that reason.
 
 ## Iframes: A Host List
 
-`<iframe>` is a whole document from another origin. It cannot run script in the page's
-origin, but it can show anything, so the `src` host must be on `$iframeHosts`, which ships
-with YouTube, YouTube's no-cookie host, Vimeo's player and Google Maps, the embeds old
-records hold. The match is the whole host after `https://`, `http://` or `//`, then the end
-of the value or `/`, `?`, `#`: no port, no userinfo, no subdomain, no suffix. A relative
-`src` is refused too, since a same-origin uploaded `.html` or `.svg` runs in the site's
-origin. `srcdoc` is refused on every element: it is a document with script allowed.
+`<iframe>` is a whole document from another origin. It cannot read the page, its cookies or
+its session, but it can run any script its own site wants in the visitor's browser with no
+click, move the whole tab to another page after any click inside the frame, and ask for the
+camera, microphone or location through `allow`. So the `src` host must be on
+`$iframeHosts`, which ships with YouTube, YouTube's no-cookie host, Vimeo's player and Google
+Maps, the embeds old records hold. The match is the whole host after `https://`, `http://` or
+`//`, then the end of the value or `/`, `?`, `#`: no port, no userinfo, no subdomain, no
+suffix. A relative `src` is refused too, since a same-origin uploaded `.html` or `.svg` runs
+in the site's origin. `srcdoc` is refused on every element: it is a document with script
+allowed.
 
 `<object>`, `<embed>` and `<applet>` are refused with no switch. Flash-era YouTube and Vimeo
 codes used `<object>` and `<embed>`, so old records have them, but they do nothing in any
