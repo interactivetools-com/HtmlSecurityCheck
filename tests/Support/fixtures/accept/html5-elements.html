@@ -21,7 +21,7 @@
     </details>
     <p>Version <data value="4.2.0">4.2</data> is <abbr title="long-term support">LTS</abbr>. See <cite>the changelog</cite> and <q>the upgrade guide</q>.</p>
     <p>Chemistry: H<sub>2</sub>O, E = mc<sup>2</sup>. <ruby>漢<rp>(</rp><rt>kan</rt><rp>)</rp></ruby></p>
-    <pre><code class="language-php">$result = HtmlValidator::check($html);
+    <pre><code class="language-php">$result = HtmlSecurityCheck::check($html);
 if (!$result-&gt;ok) {
     echo $result-&gt;errors[0]-&gt;message;
 }</code></pre>

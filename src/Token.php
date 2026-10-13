@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator;
+namespace Itools\HtmlSecurityCheck;
 
 /**
  * One token from Tokenizer::tokens(): a start tag, end tag, text run, comment, doctype, or

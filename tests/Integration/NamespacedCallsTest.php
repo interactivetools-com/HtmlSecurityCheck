@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator\Tests\Integration;
+namespace Itools\HtmlSecurityCheck\Tests\Integration;
 
 use Itools\Standards\NamespacedCallsCheck;
 use PHPUnit\Framework\TestCase;

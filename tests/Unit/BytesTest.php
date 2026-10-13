@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator\Tests\Unit;
+namespace Itools\HtmlSecurityCheck\Tests\Unit;
 
-use Itools\HtmlValidator\HtmlValidator;
-use Itools\HtmlValidator\Tests\Support\HtmlValidatorTestCase;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
+use Itools\HtmlSecurityCheck\Tests\Support\HtmlSecurityCheckTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
@@ -13,7 +13,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
  *
  * Codes: not-utf8, control-character.
  */
-final class BytesTest extends HtmlValidatorTestCase
+final class BytesTest extends HtmlSecurityCheckTestCase
 {
     #[DataProvider('validUtf8Provider')]
     public function testValidUtf8(string $html): void
@@ -62,7 +62,7 @@ final class BytesTest extends HtmlValidatorTestCase
 
     public function testInvalidUtf8StopsEveryOtherCheck(): void
     {
-        $result = HtmlValidator::check("<script>\xFF</script>");
+        $result = HtmlSecurityCheck::check("<script>\xFF</script>");
         $this->assertCount(1, $result->errors);
         $this->assertSame('not-utf8', $result->errors[0]->code);
     }
@@ -89,7 +89,7 @@ final class BytesTest extends HtmlValidatorTestCase
 
     public function testControlCharacterStopsEveryOtherCheck(): void
     {
-        $result = HtmlValidator::check("<script>\x01</script>");
+        $result = HtmlSecurityCheck::check("<script>\x01</script>");
         $this->assertCount(1, $result->errors);
         $this->assertSame('control-character', $result->errors[0]->code);
     }

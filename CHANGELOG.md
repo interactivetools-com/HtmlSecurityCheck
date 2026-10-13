@@ -1,4 +1,4 @@
-# HtmlValidator Changelog
+# HtmlSecurityCheck Changelog
 
 > Tagged releases roll up every change since the previous tag. Versions bundled
 > with CMS Builder are marked on their sections. Error codes are never renamed
@@ -6,13 +6,13 @@
 
 ## [UNRELEASED]
 
-First release. `HtmlValidator::check()` runs the HTML5 tokenizer over rich-text content and
+First release. `HtmlSecurityCheck::check()` runs the HTML5 tokenizer over rich-text content and
 rejects anything that could run script in the page it is printed into, with a `Result` of
 `Violation`s that quote the tag or attribute at fault. The content is never rewritten.
 
 ### Added
 
-- **`HtmlValidator::check()`** returns a `Result` with `ok` and `errors`, one `Violation`
+- **`HtmlSecurityCheck::check()`** returns a `Result` with `ok` and `errors`, one `Violation`
   per distinct problem, in document order, capped at 50. Nothing throws.
 - **Element allowlist**: the HTML Standard's element index plus the obsolete presentational
   elements and Word's `o:`, `v:` and `w:` prefixed names. Script, plugin, head-level and
@@ -40,14 +40,14 @@ rejects anything that could run script in the page it is printed into, with a `R
   so email templates' `<!--[if mso]>` tables pass and a script inside one rejects.
   `<?import ...>`, which bound a behavior to a prefix in IE 5.5 to 9, is refused.
 - **Byte checks**: invalid UTF-8 and C0 control characters are refused before tokenizing.
-- **`HtmlValidator::rules()`** returns the rule tables and current switch values for
+- **`HtmlSecurityCheck::rules()`** returns the rule tables and current switch values for
   settings pages and docs. `Violation::TEMPLATES` holds every message for translation.
 - **A fast path**: text and tags the rules can never refuse (a listed element, double-quoted
   attributes with nothing a rule looks at) are stepped over in one regex match instead of one
-  token at a time. `HtmlValidator::$fastPath = false` sends every byte through the tokenizer:
+  token at a time. `HtmlSecurityCheck::$fastPath = false` sends every byte through the tokenizer:
   the same result, slower.
 - **An HTML5 tokenizer** written from the HTML Standard's state list, run against the
-  html5lib tokenizer test suite in CI. Internal: the public API is `HtmlValidator`, `Result`
+  html5lib tokenizer test suite in CI. Internal: the public API is `HtmlSecurityCheck`, `Result`
   and `Violation`.
 - **A browser double-check** in CI: everything the check accepts (the fixtures, the html5lib
   inputs and the corpus) is parsed by headless Chrome, and the tree it builds must hold no

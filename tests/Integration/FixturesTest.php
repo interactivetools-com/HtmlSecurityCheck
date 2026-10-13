@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator\Tests\Integration;
+namespace Itools\HtmlSecurityCheck\Tests\Integration;
 
-use Itools\HtmlValidator\HtmlValidator;
-use Itools\HtmlValidator\Tests\Support\HtmlValidatorTestCase;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
+use Itools\HtmlSecurityCheck\Tests\Support\HtmlSecurityCheckTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
@@ -13,7 +13,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
  * (reject/<code>-<n>.html), and the TinyMCE 4 round trip must fail on every payload
  * the editor let through.
  */
-final class FixturesTest extends HtmlValidatorTestCase
+final class FixturesTest extends HtmlSecurityCheckTestCase
 {
     private const FIXTURES = __DIR__ . '/../Support/fixtures';
 
@@ -51,7 +51,7 @@ final class FixturesTest extends HtmlValidatorTestCase
     #[DataProvider('tinymce4Provider')]
     public function testTinymce4RoundTripIsRejected(string $path): void
     {
-        $result = HtmlValidator::check(file_get_contents($path));
+        $result = HtmlSecurityCheck::check(file_get_contents($path));
         $codes  = array_column($result->errors, 'code');
         foreach (['element-not-allowed', 'event-handler', 'attribute-not-allowed', 'iframe-host'] as $code) {
             $this->assertContains($code, $codes, self::describe($result));

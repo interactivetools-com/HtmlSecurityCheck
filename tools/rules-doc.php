@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /*
- * Rewrites the rule blocks in docs/ai-reference.md from HtmlValidator::rules(), so the docs
+ * Rewrites the rule blocks in docs/ai-reference.md from HtmlSecurityCheck::rules(), so the docs
  * cannot drift from the code. Each block sits between <!-- rules:NAME --> and
  * <!-- /rules:NAME --> markers, where NAME is a key of rules(); everything else on the page
  * is written by hand.
@@ -12,9 +12,9 @@ declare(strict_types=1);
  *     php tools/rules-doc.php --check    # exit 1 naming any page that is out of date (RulesDocTest does the same)
  */
 
-namespace Itools\HtmlValidator\Tools\RulesDoc;
+namespace Itools\HtmlSecurityCheck\Tools\RulesDoc;
 
-use Itools\HtmlValidator\HtmlValidator;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
 
 const PAGES = ['docs/ai-reference.md'];
 const WIDTH = 100;
@@ -22,7 +22,7 @@ const WIDTH = 100;
 /** The page with every marked block regenerated. Unmarked text is returned as is. */
 function render(string $markdown): string
 {
-    $rules = HtmlValidator::rules();
+    $rules = HtmlSecurityCheck::rules();
     return preg_replace_callback(
         '/(<!-- rules:(\w+) -->)\n?.*?\n?(<!-- \/rules:\2 -->)/s',   // <!-- rules:elements --> ... <!-- /rules:elements -->
         fn(array $match) => $match[1] . "\n" . block($match[2], $rules[$match[2]]) . "\n" . $match[3],

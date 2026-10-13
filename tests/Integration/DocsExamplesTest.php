@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator\Tests\Integration;
+namespace Itools\HtmlSecurityCheck\Tests\Integration;
 
-use Itools\HtmlValidator\HtmlValidator;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -19,14 +19,14 @@ final class DocsExamplesTest extends TestCase
     /** README quick start and the AI reference: the message for an onclick attribute */
     public function testEventHandlerMessage(): void
     {
-        $result = HtmlValidator::check('<p onclick="x()">Hi</p>');
+        $result = HtmlSecurityCheck::check('<p onclick="x()">Hi</p>');
         $this->assertSame('onclick= event handler attributes are not allowed', $result->errors[0]->message);
     }
 
     /** README, the rest of the API, and the AI reference Violation section: the four fields */
     public function testViolationFields(): void
     {
-        $violation = HtmlValidator::check('<p onclick="x()">Hi</p>')->errors[0];
+        $violation = HtmlSecurityCheck::check('<p onclick="x()">Hi</p>')->errors[0];
         $this->assertSame('event-handler', $violation->code);
         $this->assertSame('onclick', $violation->detail);
         $this->assertSame('%s= event handler attributes are not allowed', $violation->template);
@@ -36,14 +36,14 @@ final class DocsExamplesTest extends TestCase
     /** AI reference, Rules: Attributes: duplicate attributes, the first wins */
     public function testFirstDuplicateAttributeWins(): void
     {
-        $this->assertTrue(HtmlValidator::check('<a href="https://x" href="javascript:y">')->ok);
-        $this->assertFalse(HtmlValidator::check('<a href="javascript:y" href="https://x">')->ok);
+        $this->assertTrue(HtmlSecurityCheck::check('<a href="https://x" href="javascript:y">')->ok);
+        $this->assertFalse(HtmlSecurityCheck::check('<a href="javascript:y" href="https://x">')->ok);
     }
 
     /** AI reference, Rules: Elements: a refused element is one error with its attributes skipped */
     public function testRefusedElementIsOneError(): void
     {
-        $result = HtmlValidator::check('<script onload="x" src="javascript:1"></script>');
+        $result = HtmlSecurityCheck::check('<script onload="x" src="javascript:1"></script>');
         $this->assertCount(1, $result->errors);
         $this->assertSame('<script onload="x" src="javascript:1"> is not allowed', $result->errors[0]->message);
     }
@@ -51,7 +51,7 @@ final class DocsExamplesTest extends TestCase
     /** AI reference, Rules: URLs: the detail is the name and the decoded value; docs/errors.md says &colon; shows as : */
     public function testUrlDetailIsDecoded(): void
     {
-        $violation = HtmlValidator::check('<a href="javascript&colon;alert(1)">x</a>')->errors[0];
+        $violation = HtmlSecurityCheck::check('<a href="javascript&colon;alert(1)">x</a>')->errors[0];
         $this->assertSame('href="javascript:alert(1)"', $violation->detail);
     }
 
@@ -59,17 +59,17 @@ final class DocsExamplesTest extends TestCase
     public function testSwitchDefaultsMatchThePages(): void
     {
         $expected = [
-            'allowForms'  => HtmlValidator::$allowForms,
-            'allowStyles' => HtmlValidator::$allowStyles,
-            'allowEmbeds' => HtmlValidator::$allowEmbeds,
-            'iframeHosts' => HtmlValidator::$iframeHosts,
+            'allowForms'  => HtmlSecurityCheck::$allowForms,
+            'allowStyles' => HtmlSecurityCheck::$allowStyles,
+            'allowEmbeds' => HtmlSecurityCheck::$allowEmbeds,
+            'iframeHosts' => HtmlSecurityCheck::$iframeHosts,
         ];
         foreach (['README.md', 'docs/ai-reference.md'] as $page) {
             $markdown = file_get_contents(self::ROOT . "/$page");
             foreach ($expected as $name => $value) {
-                // HtmlValidator::$allowForms   = false;   // ...
-                $this->assertMatchesRegularExpression('/^HtmlValidator::\$' . $name . ' += (.+?);/m', $markdown, "$page does not show the $name default");
-                preg_match('/^HtmlValidator::\$' . $name . ' += (.+?);/m', $markdown, $match);
+                // HtmlSecurityCheck::$allowForms   = false;   // ...
+                $this->assertMatchesRegularExpression('/^HtmlSecurityCheck::\$' . $name . ' += (.+?);/m', $markdown, "$page does not show the $name default");
+                preg_match('/^HtmlSecurityCheck::\$' . $name . ' += (.+?);/m', $markdown, $match);
                 $this->assertSame($value, eval("return $match[1];"), "$page shows a different $name default from the code");
             }
         }

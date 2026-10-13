@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator\Tests\Unit;
+namespace Itools\HtmlSecurityCheck\Tests\Unit;
 
-use Itools\HtmlValidator\HtmlValidator;
-use Itools\HtmlValidator\Tests\Support\HtmlValidatorTestCase;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
+use Itools\HtmlSecurityCheck\Tests\Support\HtmlSecurityCheckTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
@@ -14,7 +14,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
  *
  * Code: less-than-in-text.
  */
-final class RawTextTest extends HtmlValidatorTestCase
+final class RawTextTest extends HtmlSecurityCheckTestCase
 {
     #[DataProvider('refusedProvider')]
     public function testALessThanIsRefused(string $html, string $detail): void
@@ -66,7 +66,7 @@ final class RawTextTest extends HtmlValidatorTestCase
 
     public function testStyleContentIsStillCheckedAsCss(): void
     {
-        $result = HtmlValidator::check('<style>p{width: expression(1)} <b></style>');
+        $result = HtmlSecurityCheck::check('<style>p{width: expression(1)} <b></style>');
         $this->assertSame(['less-than-in-text', 'css-not-allowed'], array_column($result->errors, 'code'));
     }
 }

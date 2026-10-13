@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator\Tests\Integration;
+namespace Itools\HtmlSecurityCheck\Tests\Integration;
 
-use Itools\HtmlValidator\HtmlValidator;
-use Itools\HtmlValidator\Result;
-use Itools\HtmlValidator\Violation;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
+use Itools\HtmlSecurityCheck\Result;
+use Itools\HtmlSecurityCheck\Violation;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -14,7 +14,7 @@ use ReflectionMethod;
 use ReflectionProperty;
 
 /**
- * Every public method of HtmlValidator and every public property and constant of Result and
+ * Every public method of HtmlSecurityCheck and every public property and constant of Result and
  * Violation appears in README.md and docs/ai-reference.md; the switches and limits (the
  * public static properties) and the rule constants appear in the AI reference. Found by
  * reflection so a new member cannot ship undocumented. Every page under docs/ is linked from
@@ -28,14 +28,14 @@ final class DocsCoverageTest extends TestCase
         $everywhere = [];
         $reference  = [];
 
-        $validator = new ReflectionClass(HtmlValidator::class);
+        $validator = new ReflectionClass(HtmlSecurityCheck::class);
         foreach ($validator->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
             if (!$method->isConstructor()) {
-                $everywhere[] = 'HtmlValidator::' . $method->getName() . '(';
+                $everywhere[] = 'HtmlSecurityCheck::' . $method->getName() . '(';
             }
         }
         foreach ($validator->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
-            $reference[] = 'HtmlValidator::$' . $property->getName();
+            $reference[] = 'HtmlSecurityCheck::$' . $property->getName();
         }
         foreach ($validator->getReflectionConstants(ReflectionClassConstant::IS_PUBLIC) as $constant) {
             $reference[] = $constant->getName();

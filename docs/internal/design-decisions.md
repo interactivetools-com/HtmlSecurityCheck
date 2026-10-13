@@ -1,4 +1,4 @@
-# HtmlValidator Design Decisions
+# HtmlSecurityCheck Design Decisions
 
 Settled decisions with their rationale, all made in 2026-09 while the library was built.
 Check here before proposing a feature, a rule change, or a rename. Only the road-not-taken
@@ -176,7 +176,7 @@ Chrome cross-check, with a real browser instead of a PHP library.
 Most of a check is the tokenizer reading tags one at a time, and most tags an editor writes
 are `<p>`, `<strong>`, `<a href="...">` and `<img src="...">` with nothing a rule looks at.
 So the tokenizer takes an optional anchored regex and, in the data state, steps over whatever
-it matches without producing a token. `HtmlValidator` builds that regex from its own tables:
+it matches without producing a token. `HtmlSecurityCheck` builds that regex from its own tables:
 text up to a `<`, a `<` that starts nothing, end tags, and start tags of listed elements whose
 attributes are double-quoted and hold no character reference but `&amp;`, no colon (so no
 scheme) unless the attribute is a URL attribute and the value starts with a listed scheme,
@@ -407,13 +407,13 @@ never entity-decoded, so a browser shows `&lt;b&gt;` as written.
 
 ## CSS by Regex, Plus Two Selectors
 
-SvgValidator's `CSS_FORBIDDEN` regex, carried over: the backslash, `@import`, `image(`,
+SvgSecurityCheck's `CSS_FORBIDDEN` regex, carried over: the backslash, `@import`, `image(`,
 `image-set(`, `src(`, `expression(`, `-moz-binding`, `behavior:`. It works because the
 first thing it bans is the backslash: with no escape syntax, every token reads as written
 and there is no way to spell `url(` that a regex sees differently from a browser. Every
 `url()` gets the scheme check with only `http` and `https` allowed.
 
-Dropped (2026-10-08): SvgValidator's `@charset`. A browser reads it only at the start of a
+Dropped (2026-10-08): SvgSecurityCheck's `@charset`. A browser reads it only at the start of a
 stylesheet loaded as its own file; in a `<style>` element or a `style` attribute the page's
 encoding wins and the rule is ignored. No current browser decodes UTF-7, the trick it was
 there for. One corpus file had it, an MDN page.
@@ -478,11 +478,11 @@ current browser and the record needs the `<iframe>` code anyway.
 ## Switches Are Static Properties
 
 Three switches (`$allowForms`, `$allowStyles`, `$allowEmbeds`) and two lists (`$iframeHosts`,
-`$urlSchemes`) are public static properties on `HtmlValidator`, like SvgValidator's limits.
+`$urlSchemes`) are public static properties on `HtmlSecurityCheck`, like SvgSecurityCheck's limits.
 Set once at startup, read by every `check()`.
 
 Rejected: an `Options` object or a constructor. The CMS has one configuration for the whole
-install, the switches are few, and a static property is what SvgValidator's limits already
+install, the switches are few, and a static property is what SvgSecurityCheck's limits already
 are. Add an object when a caller needs two configurations in one process, and record here
 why.
 
@@ -610,12 +610,15 @@ is set and skips elsewhere, so a contributor's first run stays green.
 
 ## Naming
 
-`HtmlValidator`, `itools/htmlvalidator`, `Itools\HtmlValidator`, following SvgValidator and
-the other sibling libraries: CamelCase folder, repo and namespace, lowercase Packagist name
-with no hyphen. Neither library validates in the W3C sense; the name pairs the two and the
-description carries the meaning ("rejects HTML that could run script").
+`HtmlSecurityCheck`, `itools/htmlsecuritycheck`, `Itools\HtmlSecurityCheck`, following
+SvgSecurityCheck and the other sibling libraries: CamelCase folder, repo and namespace,
+lowercase Packagist name with no hyphen. "Validator" was left out on purpose: to PHP
+developers it means markup conformance (the W3C checker) or form input rules (Symfony,
+Laravel), and this library does neither. "Security" covers everything the rules refuse,
+which is more than script: CSS that leaks field values, redirects, outside frames. "Check"
+says what comes back: pass or fail with reasons, never a cleaned copy.
 
 Error codes are lowercase, hyphenated, one per rule, and never renamed once released,
-because applications map them to their own messages. The codes shared with SvgValidator
+because applications map them to their own messages. The codes shared with SvgSecurityCheck
 (`not-utf8`, `element-not-allowed`, `event-handler`, `attribute-not-allowed`,
 `css-not-allowed`) mean the same thing in both.

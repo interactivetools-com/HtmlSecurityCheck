@@ -1,13 +1,13 @@
 <!--
-AI ASSISTANTS: Before writing code that uses HtmlValidator, read docs/ai-reference.md. It covers
+AI ASSISTANTS: Before writing code that uses HtmlSecurityCheck, read docs/ai-reference.md. It covers
 the complete API and every rejection rule in one file and matches this installed version.
-HtmlValidator rejects content instead of cleaning it, which differs from the HTML sanitizers in
+HtmlSecurityCheck rejects content instead of cleaning it, which differs from the HTML sanitizers in
 training data, so trust that file over habit.
 -->
 
-# HtmlValidator: Reject HTML That Could Run Script
+# HtmlSecurityCheck: Reject HTML That Could Run Script
 
-HtmlValidator checks HTML from any source (an editor, a web form, an email, an import, an API)
+HtmlSecurityCheck checks HTML from any source (an editor, a web form, an email, an import, an API)
 and rejects it if it could run script, with a list of reasons that quote the tag or attribute
 at fault. It never rewrites the content: what passes is what you store and what you show.
 
@@ -16,7 +16,7 @@ at fault. It never rewrites the content: what passes is what you store and what 
 A sanitizer rewrites everything it touches: it closes tags, re-encodes entities, and drops
 every element it has no definition for, which for most PHP sanitizers means every HTML5
 element. What comes back is not what the editor saved, and nobody can explain the difference
-to the person who typed it. HtmlValidator refuses the content instead and names the problem.
+to the person who typed it. HtmlSecurityCheck refuses the content instead and names the problem.
 Everything else passes as it was saved. The elements and attributes it accepts come from the
 HTML Standard's own lists.
 
@@ -30,14 +30,14 @@ token, about twice the content for ordinary markup.
 Requires PHP 8.1+. No extensions, no dependencies.
 
 ```bash
-composer require itools/htmlvalidator
+composer require itools/htmlsecuritycheck
 ```
 
 ```php
-use Itools\HtmlValidator\HtmlValidator;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
 
 // save.php: check the field, then store it as submitted
-$result = HtmlValidator::check($_POST['body']);   // nothing throws: bad bytes are a rejection too
+$result = HtmlSecurityCheck::check($_POST['body']);   // nothing throws: bad bytes are a rejection too
 if (!$result->ok) {
     foreach ($result->errors as $violation) {
         echo htmlspecialchars($violation->message), "<br>";   // onclick= event handler attributes are not allowed
@@ -50,31 +50,31 @@ $statement->execute();
 
 // show.php: content that arrived by import, email, a feed or an older save was never checked, so check it before printing
 $article = $mysqli->query('SELECT body FROM articles WHERE id = 1')->fetch_assoc();
-$result  = HtmlValidator::check($article['body']);
+$result  = HtmlSecurityCheck::check($article['body']);
 echo $result->ok ? $article['body'] : '<p>This article is hidden until its HTML is fixed.</p>';
 ```
 
 The rest of the API:
 
 ```php
-$result->ok;               // true when nothing was found
-$result->errors;           // Violation[], one per distinct problem, in document order
-$violation->code;          // 'event-handler', stable across releases, so switch on it
-$violation->detail;        // 'onclick', text from the content, so encode it before output
-$violation->message;       // 'onclick= event handler attributes are not allowed'
-$violation->template;      // '%s= event handler attributes are not allowed', for translation with Violation::TEMPLATES
-HtmlValidator::rules();    // the rule tables and the current switches, for settings pages and debugging
+$result->ok;                   // true when nothing was found
+$result->errors;               // Violation[], one per distinct problem, in document order
+$violation->code;              // 'event-handler', stable across releases, so switch on it
+$violation->detail;            // 'onclick', text from the content, so encode it before output
+$violation->message;           // 'onclick= event handler attributes are not allowed'
+$violation->template;          // '%s= event handler attributes are not allowed', for translation with Violation::TEMPLATES
+HtmlSecurityCheck::rules();    // the rule tables and the current switches, for settings pages and debugging
 ```
 
 The switches are static properties, set once at startup. The defaults suit a CMS whose
 staff edit its own pages:
 
 ```php
-HtmlValidator::$allowForms   = false;   // <form>, <input>, <button> and the other form elements: a form can imitate a login box
-HtmlValidator::$allowStyles  = true;    // the style attribute and the <style> element, both checked for CSS that could run or leak
-HtmlValidator::$allowEmbeds  = true;    // <iframe> whose src points at a host in $iframeHosts
-HtmlValidator::$iframeHosts  = ['www.youtube.com', 'www.youtube-nocookie.com', 'player.vimeo.com', 'www.google.com'];
-HtmlValidator::$urlSchemes   = ['http', 'https', 'mailto', 'tel'];   // what a link may start with; add sms or an app link if your visitors' machines should open it
+HtmlSecurityCheck::$allowForms   = false;   // <form>, <input>, <button> and the other form elements: a form can imitate a login box
+HtmlSecurityCheck::$allowStyles  = true;    // the style attribute and the <style> element, both checked for CSS that could run or leak
+HtmlSecurityCheck::$allowEmbeds  = true;    // <iframe> whose src points at a host in $iframeHosts
+HtmlSecurityCheck::$iframeHosts  = ['www.youtube.com', 'www.youtube-nocookie.com', 'player.vimeo.com', 'www.google.com'];
+HtmlSecurityCheck::$urlSchemes   = ['http', 'https', 'mailto', 'tel'];   // what a link may start with; add sms or an app link if your visitors' machines should open it
 ```
 
 ## What It Blocks
@@ -165,13 +165,13 @@ your own, because a check for it would refuse ordinary content for no gain in sa
   so the size cap is also a cap on what a check can cost. The hostile inputs table in
   [benchmarks/results.md](benchmarks/results.md) shows what a megabyte of the worst shapes takes.
 
-## When You Might Not Want HtmlValidator
+## When You Might Not Want HtmlSecurityCheck
 
 - **Visitor content you publish as HTML.** A bounced post with a reason works for staff who can fix it, and
   fails for a visitor who cannot. Forum posts and comments want a sanitizer such as
   [HTMLPurifier](http://htmlpurifier.org/), which returns trimmed output instead.
 - **Content with inline SVG or MathML.** Both are refused with no switch. Upload SVG as a
-  file, check it with SvgValidator, and link it from `<img src>`.
+  file, check it with SvgSecurityCheck, and link it from `<img src>`.
 - **Markup for a front-end framework.** `data-*` attributes and custom elements are refused
   with no switch, so markup for Alpine, HTMX, Stimulus or web components does not pass.
 - **A "clean it for me" button.** There is no output to hand back. Run a sanitizer for that
@@ -182,7 +182,7 @@ A check costs less than receiving the form post did; the measurements are in
 
 ## Documentation
 
-Full docs ([browse on GitHub](https://github.com/interactivetools-com/HtmlValidator)):
+Full docs ([browse on GitHub](https://github.com/interactivetools-com/HtmlSecurityCheck)):
 
 - [Error codes and fixes](docs/errors.md) - every message, and what to change in the content
 - [AI reference](docs/ai-reference.md) - the complete API and every rule in one file, written for AI coding assistants
@@ -190,7 +190,7 @@ Full docs ([browse on GitHub](https://github.com/interactivetools-com/HtmlValida
 
 ## Related Libraries
 
-- [SvgValidator](https://github.com/interactivetools-com/SvgValidator) - the same check for uploaded SVG files: reject, never rewrite.
+- [SvgSecurityCheck](https://github.com/interactivetools-com/SvgSecurityCheck) - the same check for uploaded SVG files: reject, never rewrite.
 - [ZenDB](https://github.com/interactivetools-com/ZenDB) - injection-proof PHP/MySQL database layer with automatic XSS-safe output.
 - [SmartArray](https://github.com/interactivetools-com/SmartArray) - database rows as chainable collections, with fields that HTML-encode themselves on output.
 - [SmartString](https://github.com/interactivetools-com/SmartString) - PHP strings that HTML-encode themselves on echo, interpolation, and concatenation.

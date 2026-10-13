@@ -1,6 +1,6 @@
 # Benchmarks
 
-`check-speed.php` times `HtmlValidator::check()` on generated content of known sizes, on
+`check-speed.php` times `HtmlSecurityCheck::check()` on generated content of known sizes, on
 typical pages the way an editor writes them, on a set of hostile inputs built to cost a
 tokenizer time, and on the real files in `corpus/` and `tests/Support/fixtures/`. `results.md`
 is the raw output of one run.
@@ -26,7 +26,7 @@ pastes into an editor (`MsoNormal` paragraphs, long `style` attributes, bordered
 Every generated input passes the check. Throughput is the input size divided by the check
 time, so the three shapes show how much the cost depends on tag density rather than on
 bytes. Check time is the check as shipped; Fast path off is the same check with
-`HtmlValidator::$fastPath = false`, every byte through the tokenizer, so the fast path's
+`HtmlSecurityCheck::$fastPath = false`, every byte through the tokenizer, so the fast path's
 share of the time is visible.
 
 **Typical pages** are whole pages as a WYSIWYG editor writes them, at the word counts pages

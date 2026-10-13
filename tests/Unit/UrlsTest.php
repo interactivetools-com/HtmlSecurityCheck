@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator\Tests\Unit;
+namespace Itools\HtmlSecurityCheck\Tests\Unit;
 
-use Itools\HtmlValidator\HtmlValidator;
-use Itools\HtmlValidator\Tests\Support\HtmlValidatorTestCase;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
+use Itools\HtmlSecurityCheck\Tests\Support\HtmlSecurityCheckTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
@@ -14,7 +14,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
  *
  * Code: url-scheme-not-allowed.
  */
-final class UrlsTest extends HtmlValidatorTestCase
+final class UrlsTest extends HtmlSecurityCheckTestCase
 {
     //region Allowed
 
@@ -73,7 +73,7 @@ final class UrlsTest extends HtmlValidatorTestCase
     public static function urlAttributeProvider(): array
     {
         $cases = [];
-        foreach (HtmlValidator::rules()['urlAttributes'] as $attribute) {
+        foreach (HtmlSecurityCheck::rules()['urlAttributes'] as $attribute) {
             if ($attribute !== 'formaction') {   // refused outright while forms are off; AttributesTest covers it with forms on
                 $cases[$attribute] = [$attribute];
             }
@@ -158,7 +158,7 @@ final class UrlsTest extends HtmlValidatorTestCase
                     $this->assertRejects('<a href="mailto:x@example.com">x</a>', 'url-scheme-not-allowed', 'href="mailto:x@example.com"');
                 });
             }
-            $this->assertSame(['https', 'sms'], HtmlValidator::rules()['urlSchemes']);
+            $this->assertSame(['https', 'sms'], HtmlSecurityCheck::rules()['urlSchemes']);
         });
     }
 
@@ -168,7 +168,7 @@ final class UrlsTest extends HtmlValidatorTestCase
             foreach ([true, false] as $fastPath) {
                 $this->withSettings(['fastPath' => $fastPath], fn() => $this->assertRejects('<a href="javascript:alert(1)">x</a>', 'url-scheme-not-allowed'));
             }
-            $this->assertSame(['https'], HtmlValidator::rules()['urlSchemes']);
+            $this->assertSame(['https'], HtmlSecurityCheck::rules()['urlSchemes']);
         });
     }
 

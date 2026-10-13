@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator\Tests\Unit;
+namespace Itools\HtmlSecurityCheck\Tests\Unit;
 
-use Itools\HtmlValidator\CharacterReferences;
+use Itools\HtmlSecurityCheck\CharacterReferences;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator;
+namespace Itools\HtmlSecurityCheck;
 
 // import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
 use function addcslashes, array_diff, array_intersect, array_map, array_values, count, implode, in_array, preg_match, preg_match_all, preg_quote, preg_replace, str_replace, str_starts_with, stripos, strlen, strncasecmp, strpos, strtolower, substr, trim;
@@ -12,16 +12,16 @@ use const PREG_OFFSET_CAPTURE;
  * Checks rich-text HTML for anything that could run script in a browser and reports every
  * problem it finds. The content is never modified: what passes is what gets stored.
  *
- *     $result = HtmlValidator::check($html);
+ *     $result = HtmlSecurityCheck::check($html);
  *     if (!$result->ok) {
  *         foreach ($result->errors as $violation) {
  *             echo htmlspecialchars($violation->message), "<br>";
  *         }
  *     }
  *
- *     HtmlValidator::$allowForms = true;            // switches are class properties, set once at startup
- *     HtmlValidator::$iframeHosts[] = 'example.com';
- *     $rules = HtmlValidator::rules();              // the tables and current switches, for docs and settings pages
+ *     HtmlSecurityCheck::$allowForms = true;            // switches are class properties, set once at startup
+ *     HtmlSecurityCheck::$iframeHosts[] = 'example.com';
+ *     $rules = HtmlSecurityCheck::rules();              // the tables and current switches, for docs and settings pages
  *
  * Elements and attributes are allowlists. Elements: the HTML Standard's element index minus
  * everything that runs script, loads a plugin, belongs in <head>, or changes how a browser
@@ -36,7 +36,7 @@ use const PREG_OFFSET_CAPTURE;
  * nesting. Text and tags the rules can never refuse are stepped over in one regex match
  * instead of one token at a time ($fastPath); everything else is tokenized and checked.
  */
-final class HtmlValidator
+final class HtmlSecurityCheck
 {
     //region Rules
 
@@ -220,7 +220,7 @@ final class HtmlValidator
     /**
      * Checks an HTML string. Never throws; every problem is a Violation in the Result.
      *
-     *     $result = HtmlValidator::check('<p onclick="x()">Hi</p>');
+     *     $result = HtmlSecurityCheck::check('<p onclick="x()">Hi</p>');
      *     $result->ok;                   // false
      *     $result->errors[0]->message;   // 'onclick= event handler attributes are not allowed'
      */

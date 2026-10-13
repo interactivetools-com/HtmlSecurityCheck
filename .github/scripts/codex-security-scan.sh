@@ -38,7 +38,7 @@ done
 prompt_file=$(mktemp)
 trap 'rm -f "$prompt_file"' EXIT
 cat > "$prompt_file" <<'PROMPT'
-This is a whole-library pre-release scan of HtmlValidator, a PHP 8.1+ library
+This is a whole-library pre-release scan of HtmlSecurityCheck, a PHP 8.1+ library
 that checks an HTML fragment (editor output, an HTML field, an email, API
 input) and rejects it when it could run script in the page it is printed
 into. It validates and never rewrites: there is no cleaned output. tests/,

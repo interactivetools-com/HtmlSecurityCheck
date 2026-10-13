@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator\Tests\Integration;
+namespace Itools\HtmlSecurityCheck\Tests\Integration;
 
-use Itools\HtmlValidator\HtmlValidator;
-use Itools\HtmlValidator\Tests\Support\HtmlValidatorTestCase;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
+use Itools\HtmlSecurityCheck\Tests\Support\HtmlSecurityCheckTestCase;
 
 /**
  * A second opinion from a real browser: every fragment the check accepts is parsed by Chrome, and
@@ -21,7 +21,7 @@ use Itools\HtmlValidator\Tests\Support\HtmlValidatorTestCase;
  * Chrome is found through CHROME_PATH, the usual names on PATH, or the install locations. Without
  * it the test fails in CI, where every runner but Linux on ARM has Chrome, and skips elsewhere.
  */
-final class ChromeCrossCheckTest extends HtmlValidatorTestCase
+final class ChromeCrossCheckTest extends HtmlSecurityCheckTestCase
 {
     private const FIXTURES = __DIR__ . '/../Support/fixtures';
     private const CORPUS   = __DIR__ . '/../../corpus';
@@ -95,7 +95,7 @@ final class ChromeCrossCheckTest extends HtmlValidatorTestCase
                 $content[substr($path, strlen(self::CORPUS) + 1)] = file_get_contents($path);
             }
         }
-        return array_filter($content, fn(string $html) => HtmlValidator::check($html)->ok);
+        return array_filter($content, fn(string $html) => HtmlSecurityCheck::check($html)->ok);
     }
 
     /**

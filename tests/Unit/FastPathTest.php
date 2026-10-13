@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator\Tests\Unit;
+namespace Itools\HtmlSecurityCheck\Tests\Unit;
 
-use Itools\HtmlValidator\HtmlValidator;
-use Itools\HtmlValidator\Result;
-use Itools\HtmlValidator\Tests\Support\HtmlValidatorTestCase;
-use Itools\HtmlValidator\Token;
-use Itools\HtmlValidator\Tokenizer;
-use Itools\HtmlValidator\Violation;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
+use Itools\HtmlSecurityCheck\Result;
+use Itools\HtmlSecurityCheck\Tests\Support\HtmlSecurityCheckTestCase;
+use Itools\HtmlSecurityCheck\Token;
+use Itools\HtmlSecurityCheck\Tokenizer;
+use Itools\HtmlSecurityCheck\Violation;
 use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionMethod;
 
@@ -24,7 +24,7 @@ use ReflectionMethod;
  *
  * Both values of $allowStyles are covered, since the regex changes with it.
  */
-final class FastPathTest extends HtmlValidatorTestCase
+final class FastPathTest extends HtmlSecurityCheckTestCase
 {
     private const FIXTURES = __DIR__ . '/../Support/fixtures';
     private const CORPUS   = __DIR__ . '/../../corpus';
@@ -73,7 +73,7 @@ final class FastPathTest extends HtmlValidatorTestCase
     public static function tokenizedContentProvider(): iterable
     {
         foreach (self::contentProvider() as $name => $case) {
-            $code = HtmlValidator::check($case[0])->errors[0]->code ?? '';
+            $code = HtmlSecurityCheck::check($case[0])->errors[0]->code ?? '';
             if ($code !== 'not-utf8' && $code !== 'control-character') {
                 yield $name => $case;
             }
@@ -133,7 +133,7 @@ final class FastPathTest extends HtmlValidatorTestCase
         $limit = ini_set('pcre.backtrack_limit', '1000000');   // the default, so the run of end tags reaches it with the JIT on or off
         try {
             $html   = str_repeat('</b>', 16384 * 96) . str_repeat('x', 65535) . '<script>alert(1)</script>';   // 96 full windows, then a window of text ending on <
-            $result = HtmlValidator::check($html);
+            $result = HtmlSecurityCheck::check($html);
         } finally {
             ini_set('pcre.backtrack_limit', $limit);
         }
@@ -249,8 +249,8 @@ final class FastPathTest extends HtmlValidatorTestCase
     private function assertSameOnAndOff(string $html): void
     {
         foreach ([true, false] as $allowStyles) {
-            $on  = $this->withSettings(['allowStyles' => $allowStyles, 'fastPath' => true], fn() => HtmlValidator::check($html));
-            $off = $this->withSettings(['allowStyles' => $allowStyles, 'fastPath' => false], fn() => HtmlValidator::check($html));
+            $on  = $this->withSettings(['allowStyles' => $allowStyles, 'fastPath' => true], fn() => HtmlSecurityCheck::check($html));
+            $off = $this->withSettings(['allowStyles' => $allowStyles, 'fastPath' => false], fn() => HtmlSecurityCheck::check($html));
             $this->assertSame(self::violations($off), self::violations($on), 'fast path on and off disagree on: ' . json_encode($html, JSON_UNESCAPED_UNICODE));
         }
     }
@@ -281,7 +281,7 @@ final class FastPathTest extends HtmlValidatorTestCase
 
     private static function pattern(): string
     {
-        return (new ReflectionMethod(HtmlValidator::class, 'knownSafePattern'))->invoke(null);
+        return (new ReflectionMethod(HtmlSecurityCheck::class, 'knownSafePattern'))->invoke(null);
     }
 
     /** @return array<int, array{string, string}> type and name or text of every token */

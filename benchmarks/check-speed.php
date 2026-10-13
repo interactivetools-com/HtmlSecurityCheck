@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Times HtmlValidator::check() on generated content of known sizes, on typical pages the way
+ * Times HtmlSecurityCheck::check() on generated content of known sizes, on typical pages the way
  * an editor writes them, on hostile inputs built to cost a tokenizer time, and on the real
  * files in corpus/ and tests/Support/fixtures/, and prints the markdown tables in
  * benchmarks/results.md.
@@ -20,9 +20,9 @@ declare(strict_types=1);
  * which memory_get_peak_usage() does not see. On other systems the memory columns print n/a.
  */
 
-namespace Itools\HtmlValidator\Benchmarks;
+namespace Itools\HtmlSecurityCheck\Benchmarks;
 
-use Itools\HtmlValidator\HtmlValidator;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
 use function renderMdTable;
 
 require __DIR__ . '/../src/Violation.php';
@@ -30,7 +30,7 @@ require __DIR__ . '/../src/Result.php';
 require __DIR__ . '/../src/Token.php';
 require __DIR__ . '/../src/CharacterReferences.php';
 require __DIR__ . '/../src/Tokenizer.php';
-require __DIR__ . '/../src/HtmlValidator.php';
+require __DIR__ . '/../src/HtmlSecurityCheck.php';
 require __DIR__ . '/../tools/shared-md-table.php';
 
 const RUNS     = 7;
@@ -47,9 +47,9 @@ $options   = getopt('', ['corpus:', 'sanitizer:', 'subprocess', 'file:', 'mode:'
 $corpus    = $options['corpus'] ?? null;
 $sanitizer = $options['sanitizer'] ?? null;
 
-// Every child this script starts carries HTMLVALIDATOR_BENCH_CHILD. A child that is not in
+// Every child this script starts carries HTMLSECURITYCHECK_BENCH_CHILD. A child that is not in
 // subprocess mode would run the full benchmark and start children of its own without end.
-if (getenv('HTMLVALIDATOR_BENCH_CHILD') !== false && !isset($options['subprocess'])) {
+if (getenv('HTMLSECURITYCHECK_BENCH_CHILD') !== false && !isset($options['subprocess'])) {
     fwrite(STDERR, "check-speed.php: refusing to run the full benchmark inside a benchmark child process\n");
     exit(1);
 }
@@ -61,14 +61,14 @@ if ($sanitizer !== null) {
 // Subprocess mode: time one file and print "seconds peakGrowthKb" on one line.
 if (isset($options['subprocess'])) {
     $html    = (string)file_get_contents($options['file']);
-    $call    = $options['mode'] === 'sanitize' ? sanitizer($html) : fn() => HtmlValidator::check($html);
-    HtmlValidator::$fastPath = $options['mode'] !== 'full';
+    $call    = $options['mode'] === 'sanitize' ? sanitizer($html) : fn() => HtmlSecurityCheck::check($html);
+    HtmlSecurityCheck::$fastPath = $options['mode'] !== 'full';
     $before  = peakKb();
     $seconds = fastest($call);
     printf("%.9f %d\n", $seconds, IS_LINUX ? peakKb() - $before : 0);
     exit;
 }
-putenv('HTMLVALIDATOR_BENCH_CHILD=1');   // inherited by every process shell_exec() starts below
+putenv('HTMLSECURITYCHECK_BENCH_CHILD=1');   // inherited by every process shell_exec() starts below
 
 //endregion
 //region Environment
@@ -87,7 +87,7 @@ if (!$opcacheOn || $xdebugOn) {
 //endregion
 //region Generated Content
 
-$tempDir = sys_get_temp_dir() . '/htmlvalidator-bench-' . bin2hex(random_bytes(8));   // a name nobody can create ahead of us
+$tempDir = sys_get_temp_dir() . '/htmlsecuritycheck-bench-' . bin2hex(random_bytes(8));   // a name nobody can create ahead of us
 if (!mkdir($tempDir, 0700)) {
     fwrite(STDERR, "check-speed.php: could not create $tempDir\n");
     exit(1);
@@ -129,7 +129,7 @@ $rows = [];
 foreach (hostileInputs() as $label => $html) {
     $path = "$tempDir/hostile-" . preg_replace('/\W+/', '-', $label) . '.html';
     file_put_contents($path, $html);
-    $result = HtmlValidator::check($html);
+    $result = HtmlSecurityCheck::check($html);
     [$seconds, $peakKb] = measureCheck($path);
     $rows[] = [$label, humanBytes(filesize($path)), $result->ok ? 'accepted' : "`{$result->errors[0]->code}`", ms($seconds), memoryCell($peakKb)];
 }
@@ -152,7 +152,7 @@ if ($corpus !== null) {
         $passStart = hrtime(true);
         foreach ($contents as $path => $html) {
             $start = hrtime(true);
-            HtmlValidator::check($html);
+            HtmlSecurityCheck::check($html);
             $seconds      = (hrtime(true) - $start) / 1e9;
             $times[$path] = min($times[$path] ?? INF, $seconds);
         }
@@ -544,7 +544,7 @@ function measure(string $path, string $mode, ?string $sanitizer): ?array
  */
 function timingColumns(string $path, string $label, ?string $sanitizer): array
 {
-    $result = HtmlValidator::check((string)file_get_contents($path));
+    $result = HtmlSecurityCheck::check((string)file_get_contents($path));
     if (!$result->ok) {
         fwrite(STDERR, "generated '$label' was rejected: {$result->errors[0]->message}\n");
         exit(1);

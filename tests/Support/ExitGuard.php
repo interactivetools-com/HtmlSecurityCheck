@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator\Tests\Support;
+namespace Itools\HtmlSecurityCheck\Tests\Support;
 
 use PHPUnit\Event\Test\Prepared;
 use PHPUnit\Event\Test\PreparedSubscriber;

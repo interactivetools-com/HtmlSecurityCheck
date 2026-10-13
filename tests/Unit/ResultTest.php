@@ -1,22 +1,22 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator\Tests\Unit;
+namespace Itools\HtmlSecurityCheck\Tests\Unit;
 
-use Itools\HtmlValidator\HtmlValidator;
-use Itools\HtmlValidator\Result;
-use Itools\HtmlValidator\Tests\Support\HtmlValidatorTestCase;
-use Itools\HtmlValidator\Violation;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
+use Itools\HtmlSecurityCheck\Result;
+use Itools\HtmlSecurityCheck\Tests\Support\HtmlSecurityCheckTestCase;
+use Itools\HtmlSecurityCheck\Violation;
 
 /**
  * The shape of what check() returns: ok, document order, one violation per distinct problem,
  * the error cap, the detail length, and what rules() reports.
  */
-final class ResultTest extends HtmlValidatorTestCase
+final class ResultTest extends HtmlSecurityCheckTestCase
 {
     public function testOkResult(): void
     {
-        $result = HtmlValidator::check('<p>Hello</p>');
+        $result = HtmlSecurityCheck::check('<p>Hello</p>');
         $this->assertInstanceOf(Result::class, $result);
         $this->assertTrue($result->ok);
         $this->assertSame([], $result->errors);
@@ -24,7 +24,7 @@ final class ResultTest extends HtmlValidatorTestCase
 
     public function testErrorsInDocumentOrder(): void
     {
-        $result = HtmlValidator::check('<p onclick="a">x</p><script></script><a href="javascript:b">y</a>');
+        $result = HtmlSecurityCheck::check('<p onclick="a">x</p><script></script><a href="javascript:b">y</a>');
         $this->assertFalse($result->ok);
         $this->assertSame(
             ['event-handler: onclick', 'element-not-allowed: <script>', 'url-scheme-not-allowed: href="javascript:b"'],
@@ -34,13 +34,13 @@ final class ResultTest extends HtmlValidatorTestCase
 
     public function testSameProblemReportsOnce(): void
     {
-        $result = HtmlValidator::check('<p onclick="a">x</p><p onclick="b">y</p><script></script><script></script>');
+        $result = HtmlSecurityCheck::check('<p onclick="a">x</p><p onclick="b">y</p><script></script><script></script>');
         $this->assertSame(['event-handler: onclick', 'element-not-allowed: <script>'], array_map(fn(Violation $v) => "$v->code: $v->detail", $result->errors));
     }
 
     public function testOneTagCanBreakSeveralRules(): void
     {
-        $result = HtmlValidator::check('<a href="javascript:x" onclick="y" style="width: expression(1)" srcdoc="z">a</a>');
+        $result = HtmlSecurityCheck::check('<a href="javascript:x" onclick="y" style="width: expression(1)" srcdoc="z">a</a>');
         $this->assertSame(
             ['url-scheme-not-allowed', 'event-handler', 'css-not-allowed', 'attribute-not-allowed'],
             array_map(fn(Violation $v) => $v->code, $result->errors),
@@ -49,7 +49,7 @@ final class ResultTest extends HtmlValidatorTestCase
 
     public function testViolationFields(): void
     {
-        $violation = HtmlValidator::check('<script src="x">')->errors[0];
+        $violation = HtmlSecurityCheck::check('<script src="x">')->errors[0];
         $this->assertSame('element-not-allowed', $violation->code);
         $this->assertSame('<script src="x">', $violation->detail);
         $this->assertSame('%s is not allowed', $violation->template);
@@ -72,7 +72,7 @@ final class ResultTest extends HtmlValidatorTestCase
             foreach (range(1, 5) as $n) {
                 $html .= "<badelement$n attr=\"x\"></badelement$n>";   // the number is inside the cut, so the details stay distinct
             }
-            $result = HtmlValidator::check($html);
+            $result = HtmlSecurityCheck::check($html);
             $this->assertCount(3, $result->errors);
             $this->assertSame('<badelement1...', $result->errors[0]->detail);
         });
@@ -81,24 +81,24 @@ final class ResultTest extends HtmlValidatorTestCase
     public function testDetailIsCutOnACharacterBoundary(): void
     {
         $this->withSettings(['maxDetailLength' => 9], function () {
-            $violation = HtmlValidator::check('<script>日本語</script>')->errors[0];   // <script> is exactly 8 characters
+            $violation = HtmlSecurityCheck::check('<script>日本語</script>')->errors[0];   // <script> is exactly 8 characters
             $this->assertSame('<script>', $violation->detail);
-            $violation = HtmlValidator::check('<script 日本語="x">')->errors[0];
+            $violation = HtmlSecurityCheck::check('<script 日本語="x">')->errors[0];
             $this->assertSame('<script 日...', $violation->detail);
         });
     }
 
     public function testDetailIsOneLine(): void
     {
-        $violation = HtmlValidator::check("<script\nsrc=\"x\">")->errors[0];
+        $violation = HtmlSecurityCheck::check("<script\nsrc=\"x\">")->errors[0];
         $this->assertSame('<script\nsrc="x">', $violation->detail);
-        $violation = HtmlValidator::check("<script\r\nsrc=\"x\">")->errors[0];
+        $violation = HtmlSecurityCheck::check("<script\r\nsrc=\"x\">")->errors[0];
         $this->assertSame('<script\nsrc="x">', $violation->detail);   // CRLF is LF to the tokenizer, and the detail follows it
     }
 
     public function testRules(): void
     {
-        $rules = HtmlValidator::rules();
+        $rules = HtmlSecurityCheck::rules();
         $this->assertSame(
             ['elements', 'formElements', 'attributes', 'attributePrefixes', 'officeNamespaces', 'formAttributes', 'urlSchemes', 'scriptSchemes', 'cssUrlSchemes', 'urlAttributes', 'allowForms', 'allowStyles', 'allowEmbeds', 'iframeHosts'],
             array_keys($rules),
@@ -108,7 +108,7 @@ final class ResultTest extends HtmlValidatorTestCase
         $this->assertContains('class', $rules['attributes']);
         $this->assertNotContains('srcdoc', $rules['attributes']);
         $this->assertFalse($rules['allowForms']);
-        $this->withSettings(['allowForms' => true], fn() => $this->assertTrue(HtmlValidator::rules()['allowForms']));
+        $this->withSettings(['allowForms' => true], fn() => $this->assertTrue(HtmlSecurityCheck::rules()['allowForms']));
     }
 
     public function testEmptyInput(): void

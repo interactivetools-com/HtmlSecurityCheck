@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator\Tests\Unit;
+namespace Itools\HtmlSecurityCheck\Tests\Unit;
 
-use Itools\HtmlValidator\Tests\Support\HtmlValidatorTestCase;
+use Itools\HtmlSecurityCheck\Tests\Support\HtmlSecurityCheckTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
@@ -12,7 +12,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
  *
  * Code: iframe-host.
  */
-final class EmbedsTest extends HtmlValidatorTestCase
+final class EmbedsTest extends HtmlSecurityCheckTestCase
 {
     #[DataProvider('allowedIframeProvider')]
     public function testAllowedIframe(string $src): void

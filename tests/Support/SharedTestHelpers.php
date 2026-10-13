@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator\Tests\Support;
+namespace Itools\HtmlSecurityCheck\Tests\Support;
 
 /**
  * Test helpers shared byte-for-byte across our libraries: each carries a

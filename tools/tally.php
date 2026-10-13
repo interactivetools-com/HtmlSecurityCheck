@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /*
- * Runs HtmlValidator over every .html under corpus/ and reports, per source, how many
+ * Runs HtmlSecurityCheck over every .html under corpus/ and reports, per source, how many
  * payloads were accepted and rejected, the count per error code with example files, and
  * the surprises: payloads a must-reject set got through, or files a must-accept set lost.
  *
@@ -39,7 +39,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
-use Itools\HtmlValidator\HtmlValidator;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
 
 const CORPUS_DIR = __DIR__ . '/../corpus';
 const KNOWN_FILE = __DIR__ . '/corpus-known.json';
@@ -96,7 +96,7 @@ foreach ($sources as $name) {
         $files[$hash] = $file;
         $label        = isset($cases[$file]) ? "$file  {$cases[$file]['title']}" : $file;
         $expectHere   = $cases[$file]['expect'] ?? $expect;
-        $result       = HtmlValidator::check($html);
+        $result       = HtmlSecurityCheck::check($html);
         $surprise     = $result->ok ? $expectHere === 'reject' : $expectHere === 'accept';
         if ($surprise && isset($knownHere[$hash])) {
             $knownUsed[$hash] = true;
@@ -168,7 +168,7 @@ if ($stale !== []) {
 }
 
 /** The first "rejects" rule in tools/corpus-known.json that covers this violation, or null. */
-function matchingRule(array $rules, Itools\HtmlValidator\Violation $violation): ?array
+function matchingRule(array $rules, Itools\HtmlSecurityCheck\Violation $violation): ?array
 {
     foreach ($rules as $rule) {
         if ($rule['code'] === $violation->code && preg_match('~' . $rule['detail'] . '~i', $violation->detail)) {

@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator\Tests\Unit;
+namespace Itools\HtmlSecurityCheck\Tests\Unit;
 
-use Itools\HtmlValidator\HtmlValidator;
-use Itools\HtmlValidator\Tests\Support\HtmlValidatorTestCase;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
+use Itools\HtmlSecurityCheck\Tests\Support\HtmlSecurityCheckTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
@@ -13,7 +13,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
  *
  * Code: element-not-allowed. Attribute values are covered in AttributesTest, UrlsTest and CssTest.
  */
-final class ElementsTest extends HtmlValidatorTestCase
+final class ElementsTest extends HtmlSecurityCheckTestCase
 {
     //region Allowlist
 
@@ -26,7 +26,7 @@ final class ElementsTest extends HtmlValidatorTestCase
     public static function allowedElementProvider(): array
     {
         $cases = [];
-        foreach (HtmlValidator::rules()['elements'] as $element) {
+        foreach (HtmlSecurityCheck::rules()['elements'] as $element) {
             $cases[$element] = [$element];
         }
         return $cases;
@@ -96,7 +96,7 @@ final class ElementsTest extends HtmlValidatorTestCase
     {
         // the namespace instruction is a bogus comment and passes; the import that bound the behavior rejects, and so does the element
         $html   = '<?xml:namespace prefix="t" ns="urn:schemas-microsoft-com:time"><?import namespace="t" implementation="#default#time2"><t:set attributeName="innerHTML" to="x"/>';
-        $result = HtmlValidator::check($html);
+        $result = HtmlSecurityCheck::check($html);
         $this->assertSame(['<?import namespace="t" implementation="#default#time2">', '<t:set attributeName="innerHTML" to="x"/>'], array_column($result->errors, 'detail'));
 
         // the prefix was arbitrary in IE, so with a Word prefix the import is what rejects
@@ -145,7 +145,7 @@ final class ElementsTest extends HtmlValidatorTestCase
 
     public function testRefusedElementReportsOnceAndSkipsItsAttributes(): void
     {
-        $result = HtmlValidator::check('<script onload="x" src="javascript:1"></script>');
+        $result = HtmlSecurityCheck::check('<script onload="x" src="javascript:1"></script>');
         $this->assertCount(1, $result->errors);
         $this->assertSame('element-not-allowed', $result->errors[0]->code);
     }
@@ -205,7 +205,7 @@ final class ElementsTest extends HtmlValidatorTestCase
     public static function formElementProvider(): array
     {
         $cases = [];
-        foreach (HtmlValidator::rules()['formElements'] as $element) {
+        foreach (HtmlSecurityCheck::rules()['formElements'] as $element) {
             $cases[$element] = [$element];
         }
         return $cases;

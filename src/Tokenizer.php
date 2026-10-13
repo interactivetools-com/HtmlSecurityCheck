@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator;
+namespace Itools\HtmlSecurityCheck;
 
 use Generator;
 
@@ -39,7 +39,7 @@ use const PREG_OFFSET_CAPTURE;
  * listening, which is what the html5lib suite expects.
  *
  * Pass $skip, an anchored regex, to step over markup the caller has no use for: in the data
- * state whatever it matches produces no tokens. HtmlValidator passes one for the text and
+ * state whatever it matches produces no tokens. HtmlSecurityCheck passes one for the text and
  * tags its rules can never refuse.
  *
  * Two deliberate differences from a browser:

@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator\Tests\Unit;
+namespace Itools\HtmlSecurityCheck\Tests\Unit;
 
-use Itools\HtmlValidator\HtmlValidator;
-use Itools\HtmlValidator\Tests\Support\HtmlValidatorTestCase;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
+use Itools\HtmlSecurityCheck\Tests\Support\HtmlSecurityCheckTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
@@ -12,7 +12,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
  * inside old Windows programs and Outlook's Word engine read it as markup, so it gets the same rules as the
  * content around it. Email templates rely on it for Outlook-only tables and VML buttons.
  */
-final class ConditionalCommentsTest extends HtmlValidatorTestCase
+final class ConditionalCommentsTest extends HtmlSecurityCheckTestCase
 {
     #[DataProvider('acceptedProvider')]
     public function testSafeMarkupInsidePasses(string $html): void
@@ -52,14 +52,14 @@ final class ConditionalCommentsTest extends HtmlValidatorTestCase
 
     public function testErrorsInsideAndOutsideAreReportedTogether(): void
     {
-        $result = HtmlValidator::check('<!--[if IE]><script>a</script><![endif]--><object></object>');
+        $result = HtmlSecurityCheck::check('<!--[if IE]><script>a</script><![endif]--><object></object>');
         $this->assertSame(['<script>', '<object>'], array_column($result->errors, 'detail'));
     }
 
     public function testMaxErrorsHoldsAcrossTheComment(): void
     {
         $this->withSettings(['maxErrors' => 2], function () {
-            $result = HtmlValidator::check('<!--[if IE]><script>a</script><object></object><embed><![endif]-->');
+            $result = HtmlSecurityCheck::check('<!--[if IE]><script>a</script><object></object><embed><![endif]-->');
             $this->assertCount(2, $result->errors);
         });
     }

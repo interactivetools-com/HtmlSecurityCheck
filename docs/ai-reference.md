@@ -1,12 +1,12 @@
-# HtmlValidator AI Reference
+# HtmlSecurityCheck AI Reference
 
 This is a consolidated reference for AI coding assistants: the complete API and every
-rejection rule in one file, covering HtmlValidator 1.0. For human-friendly docs, see the
-[README](https://github.com/interactivetools-com/HtmlValidator).
+rejection rule in one file, covering HtmlSecurityCheck 1.0. For human-friendly docs, see the
+[README](https://github.com/interactivetools-com/HtmlSecurityCheck).
 
 Contents:
 
-- [What HtmlValidator Is](#what-htmlvalidator-is)
+- [What HtmlSecurityCheck Is](#what-htmlsecuritycheck-is)
 - [API](#api) - check(), rules(), the switches, Result, Violation
 - [Usage Pattern](#usage-pattern)
 - [Error Codes](#error-codes)
@@ -26,9 +26,9 @@ Contents:
 
 ---
 
-## What HtmlValidator Is
+## What HtmlSecurityCheck Is
 
-HtmlValidator checks rich-text HTML (WYSIWYG output, HTML fields, API input) and rejects it if
+HtmlSecurityCheck checks rich-text HTML (WYSIWYG output, HTML fields, API input) and rejects it if
 it could run script in the page it is printed into, **with a list of reasons**. The content is
 **never modified**: there is no cleaned output, and the caller stores the original string or
 refuses the save.
@@ -39,9 +39,9 @@ bytes. Elements and attribute names are allowlists, so a name it has never seen 
 Attribute values get the URL scheme and CSS checks.
 
 ```php
-use Itools\HtmlValidator\HtmlValidator;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
 
-$result = HtmlValidator::check($_POST['body']);
+$result = HtmlSecurityCheck::check($_POST['body']);
 $result->ok;       // true when the content passed
 $result->errors;   // Violation[] - empty when ok, otherwise one per distinct problem
 ```
@@ -50,12 +50,12 @@ Requirements: PHP 8.1+. No extensions, no dependencies.
 
 ## API
 
-Three public classes in the `Itools\HtmlValidator` namespace. Nothing throws for bad content:
+Three public classes in the `Itools\HtmlSecurityCheck` namespace. Nothing throws for bad content:
 a hostile or broken string is expected input and comes back as a rejected `Result`.
 
 ```php
-HtmlValidator::check(string $html): Result   // time grows with the size of the content, nothing else; memory is a copy of the string plus the current token
-HtmlValidator::rules(): array                // the rule tables and the current switch values, for settings pages and debugging
+HtmlSecurityCheck::check(string $html): Result   // time grows with the size of the content, nothing else; memory is a copy of the string plus the current token
+HtmlSecurityCheck::rules(): array                // the rule tables and the current switch values, for settings pages and debugging
 ```
 
 `rules()` returns an array with the keys `elements`, `formElements`, `attributes`,
@@ -70,14 +70,14 @@ array changes nothing.
 Public static properties, read by every `check()` call. Set them once at startup.
 
 ```php
-HtmlValidator::$allowForms   = false;   // form elements (FORM_ELEMENTS) and formaction pass
-HtmlValidator::$allowStyles  = true;    // the style attribute and the <style> element pass, after the CSS check
-HtmlValidator::$allowEmbeds  = true;    // <iframe> passes when its src host is in $iframeHosts
-HtmlValidator::$iframeHosts  = ['www.youtube.com', 'www.youtube-nocookie.com', 'player.vimeo.com', 'www.google.com'];
-HtmlValidator::$urlSchemes   = ['http', 'https', 'mailto', 'tel'];   // schemes a URL attribute may start with
-HtmlValidator::$maxErrors       = 50;   // distinct errors reported per check
-HtmlValidator::$maxDetailLength = 80;   // characters of content quoted in a detail before "..."
-HtmlValidator::$fastPath        = true; // text and tags the rules can never refuse are stepped over in one regex match; false sends every byte through the tokenizer, same result, slower
+HtmlSecurityCheck::$allowForms   = false;   // form elements (FORM_ELEMENTS) and formaction pass
+HtmlSecurityCheck::$allowStyles  = true;    // the style attribute and the <style> element pass, after the CSS check
+HtmlSecurityCheck::$allowEmbeds  = true;    // <iframe> passes when its src host is in $iframeHosts
+HtmlSecurityCheck::$iframeHosts  = ['www.youtube.com', 'www.youtube-nocookie.com', 'player.vimeo.com', 'www.google.com'];
+HtmlSecurityCheck::$urlSchemes   = ['http', 'https', 'mailto', 'tel'];   // schemes a URL attribute may start with
+HtmlSecurityCheck::$maxErrors       = 50;   // distinct errors reported per check
+HtmlSecurityCheck::$maxDetailLength = 80;   // characters of content quoted in a detail before "..."
+HtmlSecurityCheck::$fastPath        = true; // text and tags the rules can never refuse are stepped over in one regex match; false sends every byte through the tokenizer, same result, slower
 ```
 
 `$iframeHosts` entries are host names only, matched whole and case-insensitively: no scheme,
@@ -130,9 +130,9 @@ them all up front.
 ## Usage Pattern
 
 ```php
-use Itools\HtmlValidator\HtmlValidator;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
 
-$result = HtmlValidator::check($_POST['body']);
+$result = HtmlSecurityCheck::check($_POST['body']);
 
 if (!$result->ok) {
     foreach ($result->errors as $violation) {
@@ -145,15 +145,15 @@ $statement->bind_param('si', $_POST['body'], $_POST['id']);   // the original st
 $statement->execute();
 ```
 
-HTML sanitizers return a cleaned string to store. HtmlValidator does not; store the original.
+HTML sanitizers return a cleaned string to store. HtmlSecurityCheck does not; store the original.
 
 ```php
 // WRONG - check() returns a Result, not cleaned HTML
-$clean = HtmlValidator::check($html);
+$clean = HtmlSecurityCheck::check($html);
 $statement->bind_param('si', $clean, $id);
 
 // RIGHT - check, then store the original string only when ok
-if (HtmlValidator::check($html)->ok) {
+if (HtmlSecurityCheck::check($html)->ok) {
     $statement->bind_param('si', $html, $id);
 }
 ```
@@ -586,4 +586,4 @@ form or the API before the check.
   handler affects every later `check()` in the same process. Set them at startup.
 - **`Tokenizer`, `Token` and `CharacterReferences` are internal.** They are the validator's
   own parser, marked `@internal`, and can change between releases. The public API is
-  `HtmlValidator`, `Result` and `Violation`.
+  `HtmlSecurityCheck`, `Result` and `Violation`.

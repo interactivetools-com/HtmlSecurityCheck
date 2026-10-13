@@ -2,7 +2,7 @@
 
 The shared writing standards for all InteractiveTools libraries are in the team's
 [internal docs repo](https://github.com/itools-internal/docs/tree/main/open-source)
-under open-source/ (private, team access only). This file holds HtmlValidator-specific
+under open-source/ (private, team access only). This file holds HtmlSecurityCheck-specific
 additions only.
 
 - **Reader assumption:** a working PHP programmer who stores what a WYSIWYG editor or an
@@ -21,7 +21,7 @@ additions only.
 - **Error codes always in backticks:** `element-not-allowed`. Codes are the API:
   applications switch on them, so a page never paraphrases one.
 - **Switches are named as code:** `$allowForms`, `$iframeHosts`, or with the class when the
-  reader might not know it (`HtmlValidator::$allowForms`). "The forms switch" is fine after
+  reader might not know it (`HtmlSecurityCheck::$allowForms`). "The forms switch" is fine after
   the code name has appeared on the page.
 - **"Script" means JavaScript running in the page** where the content is printed. Say
   "script" for the outcome and "JavaScript" only when naming the language.

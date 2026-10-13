@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator\Tests\Unit;
+namespace Itools\HtmlSecurityCheck\Tests\Unit;
 
-use Itools\HtmlValidator\HtmlValidator;
-use Itools\HtmlValidator\Tests\Support\HtmlValidatorTestCase;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
+use Itools\HtmlSecurityCheck\Tests\Support\HtmlSecurityCheckTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
@@ -14,7 +14,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
  *
  * Codes: event-handler, attribute-not-allowed. Values are covered in UrlsTest and CssTest.
  */
-final class AttributesTest extends HtmlValidatorTestCase
+final class AttributesTest extends HtmlSecurityCheckTestCase
 {
     //region Event Handlers
 
@@ -63,7 +63,7 @@ final class AttributesTest extends HtmlValidatorTestCase
     public static function listedAttributeProvider(): array
     {
         $cases = [];
-        foreach (HtmlValidator::rules()['attributes'] as $attribute) {
+        foreach (HtmlSecurityCheck::rules()['attributes'] as $attribute) {
             $cases[$attribute] = [$attribute];
         }
         return $cases;

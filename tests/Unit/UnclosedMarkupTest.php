@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator\Tests\Unit;
+namespace Itools\HtmlSecurityCheck\Tests\Unit;
 
-use Itools\HtmlValidator\HtmlValidator;
-use Itools\HtmlValidator\Tests\Support\HtmlValidatorTestCase;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
+use Itools\HtmlSecurityCheck\Tests\Support\HtmlSecurityCheckTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
@@ -14,7 +14,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
  *
  * Code: unclosed-markup.
  */
-final class UnclosedMarkupTest extends HtmlValidatorTestCase
+final class UnclosedMarkupTest extends HtmlSecurityCheckTestCase
 {
     #[DataProvider('unclosedProvider')]
     public function testUnclosedMarkup(string $html, string $detail): void
@@ -52,13 +52,13 @@ final class UnclosedMarkupTest extends HtmlValidatorTestCase
     {
         $css       = str_repeat('p { color: red } ', 10);
         $violation = $this->assertRejects("<style>$css", 'unclosed-markup');
-        $this->assertSame(HtmlValidator::$maxDetailLength + 3, strlen($violation->detail));
+        $this->assertSame(HtmlSecurityCheck::$maxDetailLength + 3, strlen($violation->detail));
         $this->assertStringEndsWith('...', $violation->detail);
     }
 
     public function testOtherErrorsStillReport(): void
     {
-        $result = HtmlValidator::check('<style>p { width: expression(1) }');
+        $result = HtmlSecurityCheck::check('<style>p { width: expression(1) }');
         $this->assertSame(['css-not-allowed', 'unclosed-markup'], array_column($result->errors, 'code'));
     }
 

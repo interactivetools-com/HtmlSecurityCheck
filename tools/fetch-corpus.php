@@ -692,7 +692,7 @@ function githubFolder(array $source): array
 /** One GET, with GITHUB_TOKEN on GitHub API calls when it is set. Exits on any failure. */
 function httpGet(string $url): string
 {
-    $headers = ['User-Agent: htmlvalidator-fetch-corpus (https://github.com/interactivetools-com/HtmlValidator)'];
+    $headers = ['User-Agent: htmlsecuritycheck-fetch-corpus (https://github.com/interactivetools-com/HtmlSecurityCheck)'];
     $token   = getenv('GITHUB_TOKEN');
     if ($token && str_starts_with($url, 'https://api.github.com/')) {
         $headers[] = "Authorization: Bearer $token";

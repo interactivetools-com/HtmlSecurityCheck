@@ -1,14 +1,14 @@
 {
-    "name": "itools/htmlvalidator",
+    "name": "itools/htmlsecuritycheck",
     "description": "Rejects rich-text HTML that could run script: runs the HTML5 tokenizer browsers use, reports every problem with the tag or attribute at fault, never rewrites the content",
     "keywords": ["php", "html", "html5", "wysiwyg", "rich-text", "validator", "validation", "html-validator", "security", "xss", "html-sanitizer", "sanitize", "tokenizer", "streaming"],
     "type": "library",
-    "homepage": "https://github.com/interactivetools-com/HtmlValidator",
+    "homepage": "https://github.com/interactivetools-com/HtmlSecurityCheck",
     "license": "MIT",
     "readme": "README.md",
     "support": {
-        "issues": "https://github.com/interactivetools-com/HtmlValidator/issues",
-        "source": "https://github.com/interactivetools-com/HtmlValidator"
+        "issues": "https://github.com/interactivetools-com/HtmlSecurityCheck/issues",
+        "source": "https://github.com/interactivetools-com/HtmlSecurityCheck"
     },
     "authors": [
         {
@@ -18,12 +18,12 @@
     ],
     "autoload": {
         "psr-4": {
-            "Itools\\HtmlValidator\\": "src/"
+            "Itools\\HtmlSecurityCheck\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Itools\\HtmlValidator\\Tests\\": "tests/",
+            "Itools\\HtmlSecurityCheck\\Tests\\": "tests/",
             "Itools\\Standards\\": "tests/Integration/"
         }
     },

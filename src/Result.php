@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator;
+namespace Itools\HtmlSecurityCheck;
 
 /**
- * What HtmlValidator::check() returns.
+ * What HtmlSecurityCheck::check() returns.
  *
- *     $result = HtmlValidator::check($html);
+ *     $result = HtmlSecurityCheck::check($html);
  *     if ($result->ok) {
  *         // store the content
  *     }
@@ -15,7 +15,7 @@ namespace Itools\HtmlValidator;
  *     }
  *
  * errors holds one Violation per distinct problem, in document order, at most
- * HtmlValidator::$maxErrors of them. A Violation's detail and message are plain text taken
+ * HtmlSecurityCheck::$maxErrors of them. A Violation's detail and message are plain text taken
  * from the content, so HTML-encode them before output.
  */
 final class Result

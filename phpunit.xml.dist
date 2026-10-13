@@ -10,7 +10,7 @@
          failOnRisky="true"
          beStrictAboutOutputDuringTests="true">
   <extensions>
-    <bootstrap class="Itools\HtmlValidator\Tests\Support\ExitGuard"/>
+    <bootstrap class="Itools\HtmlSecurityCheck\Tests\Support\ExitGuard"/>
   </extensions>
   <testsuites>
     <testsuite name="unit">

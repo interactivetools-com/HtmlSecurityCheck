@@ -1,11 +1,11 @@
 <?php
 declare(strict_types=1);
 
-namespace Itools\HtmlValidator\Tests\Support;
+namespace Itools\HtmlSecurityCheck\Tests\Support;
 
-use Itools\HtmlValidator\HtmlValidator;
-use Itools\HtmlValidator\Result;
-use Itools\HtmlValidator\Violation;
+use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
+use Itools\HtmlSecurityCheck\Result;
+use Itools\HtmlSecurityCheck\Violation;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -19,7 +19,7 @@ use PHPUnit\Framework\TestCase;
  *   defaults afterwards so one test cannot change what the next one sees
  * - Failure messages list every violation the validator reported, one per line
  */
-abstract class HtmlValidatorTestCase extends TestCase
+abstract class HtmlSecurityCheckTestCase extends TestCase
 {
     use SharedTestHelpers;
 
@@ -28,7 +28,7 @@ abstract class HtmlValidatorTestCase extends TestCase
     /** Assert check($html) passes. Returns the Result. */
     protected function assertAccepts(string $html): Result
     {
-        $result = HtmlValidator::check($html);
+        $result = HtmlSecurityCheck::check($html);
         $this->assertTrue($result->ok, "Expected the HTML to be accepted, got:\n" . self::describe($result));
         return $result;
     }
@@ -39,7 +39,7 @@ abstract class HtmlValidatorTestCase extends TestCase
      */
     protected function assertRejects(string $html, string $code, ?string $detail = null): Violation
     {
-        $result = HtmlValidator::check($html);
+        $result = HtmlSecurityCheck::check($html);
         foreach ($result->errors as $violation) {
             if ($violation->code === $code && ($detail === null || $violation->detail === $detail)) {
                 $this->addToAssertionCount(1);   // a match is the assertion; without this PHPUnit flags the test as risky
@@ -63,7 +63,7 @@ abstract class HtmlValidatorTestCase extends TestCase
     //region Settings
 
     /**
-     * Run $fn with the given static properties of HtmlValidator set, then put every one back.
+     * Run $fn with the given static properties of HtmlSecurityCheck set, then put every one back.
      *
      *     $this->withSettings(['allowForms' => true], fn() => $this->assertAccepts('<form></form>'));
      *
@@ -73,14 +73,14 @@ abstract class HtmlValidatorTestCase extends TestCase
     {
         $saved = [];
         foreach ($settings as $property => $value) {
-            $saved[$property]          = HtmlValidator::$$property;
-            HtmlValidator::$$property = $value;
+            $saved[$property]          = HtmlSecurityCheck::$$property;
+            HtmlSecurityCheck::$$property = $value;
         }
         try {
             return $fn();
         } finally {
             foreach ($saved as $property => $value) {
-                HtmlValidator::$$property = $value;
+                HtmlSecurityCheck::$$property = $value;
             }
         }
     }
