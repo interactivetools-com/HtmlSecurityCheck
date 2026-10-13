@@ -60,8 +60,8 @@ HtmlSecurityCheck::rules(): array                // the rule tables and the curr
 
 `rules()` returns an array with the keys `elements`, `formElements`, `attributes`,
 `attributePrefixes`, `officeNamespaces`, `formAttributes`, `urlSchemes`, `scriptSchemes`,
-`cssUrlSchemes`, `urlAttributes`, `allowForms`, `allowStyles`, `allowEmbeds` and
-`iframeHosts`. See [Rule Tables](#rule-tables).
+`cssUrlSchemes`, `urlAttributes`, `allowForms`, `allowStyleAttribute`, `allowStyleElement`,
+`allowEmbeds` and `iframeHosts`. See [Rule Tables](#rule-tables).
 The keys are copies of the constants and the current switch values; changing the returned
 array changes nothing.
 
@@ -70,11 +70,12 @@ array changes nothing.
 Public static properties, read by every `check()` call. Set them once at startup.
 
 ```php
-HtmlSecurityCheck::$allowForms   = false;   // form elements (FORM_ELEMENTS) and formaction pass
-HtmlSecurityCheck::$allowStyles  = true;    // the style attribute and the <style> element pass, after the CSS check
-HtmlSecurityCheck::$allowEmbeds  = true;    // <iframe> passes when its src host is in $iframeHosts
-HtmlSecurityCheck::$iframeHosts  = ['www.youtube.com', 'www.youtube-nocookie.com', 'player.vimeo.com', 'www.google.com'];
-HtmlSecurityCheck::$urlSchemes   = ['http', 'https', 'mailto', 'tel'];   // schemes a URL attribute may start with
+HtmlSecurityCheck::$allowForms          = false;   // form elements (FORM_ELEMENTS) and formaction pass
+HtmlSecurityCheck::$allowStyleAttribute = true;    // the style attribute passes, after the CSS check; it styles its own element only
+HtmlSecurityCheck::$allowStyleElement   = true;    // the <style> element passes, after the CSS check; its rules can style anything on the page
+HtmlSecurityCheck::$allowEmbeds         = true;    // <iframe> passes when its src host is in $iframeHosts
+HtmlSecurityCheck::$iframeHosts         = ['www.youtube.com', 'www.youtube-nocookie.com', 'player.vimeo.com', 'www.google.com'];
+HtmlSecurityCheck::$urlSchemes          = ['http', 'https', 'mailto', 'tel'];   // schemes a URL attribute may start with
 HtmlSecurityCheck::$maxErrors       = 50;   // distinct errors reported per check
 HtmlSecurityCheck::$maxDetailLength = 80;   // characters of content quoted in a detail before "..."
 HtmlSecurityCheck::$fastPath        = true; // text and tags the rules can never refuse are stepped over in one regex match; false sends every byte through the tokenizer, same result, slower
@@ -223,7 +224,7 @@ control characters inside a detail are escaped (`\n`), so a detail is always one
 For every start tag, by its lowercased name:
 
 - In `ELEMENTS` (the [elements table](#rule-tables)): passes.
-- `style`: passes when `$allowStyles` is set. Its text content is then checked as CSS.
+- `style`: passes when `$allowStyleElement` is set. Its text content is then checked as CSS.
 - `iframe`: passes when `$allowEmbeds` is set, then its `src` is checked, see
   [Iframes](#rules-iframes).
 - In `FORM_ELEMENTS`: passes when `$allowForms` is set.
@@ -272,7 +273,7 @@ For every attribute on an allowed element, by its lowercased name, in this order
      other value is reported with the name; in a page served as XHTML,
      `<o:script xmlns:o="http://www.w3.org/1999/xhtml">` is a script
    - `formaction` (`FORM_ATTRIBUTES`) while `$allowForms` is set; it is then a URL attribute
-3. `style` while `$allowStyles` is off: `attribute-not-allowed`. With styles on its value is
+3. `style` while `$allowStyleAttribute` is off: `attribute-not-allowed`. With it on, the value is
    checked as CSS, see [CSS](#rules-css).
 4. Every other attribute: the value's URL scheme is checked, see [URLs](#rules-urls).
 
@@ -523,9 +524,13 @@ storeitemid temporary text xpath namespaceuri
 `false`
 <!-- /rules:allowForms -->
 
-**`allowStyles`** default: <!-- rules:allowStyles -->
+**`allowStyleAttribute`** default: <!-- rules:allowStyleAttribute -->
 `true`
-<!-- /rules:allowStyles -->
+<!-- /rules:allowStyleAttribute -->
+
+**`allowStyleElement`** default: <!-- rules:allowStyleElement -->
+`true`
+<!-- /rules:allowStyleElement -->
 
 **`allowEmbeds`** default: <!-- rules:allowEmbeds -->
 `true`

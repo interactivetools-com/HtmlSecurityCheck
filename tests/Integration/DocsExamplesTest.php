@@ -59,10 +59,11 @@ final class DocsExamplesTest extends TestCase
     public function testSwitchDefaultsMatchThePages(): void
     {
         $expected = [
-            'allowForms'  => HtmlSecurityCheck::$allowForms,
-            'allowStyles' => HtmlSecurityCheck::$allowStyles,
-            'allowEmbeds' => HtmlSecurityCheck::$allowEmbeds,
-            'iframeHosts' => HtmlSecurityCheck::$iframeHosts,
+            'allowForms'          => HtmlSecurityCheck::$allowForms,
+            'allowStyleAttribute' => HtmlSecurityCheck::$allowStyleAttribute,
+            'allowStyleElement'   => HtmlSecurityCheck::$allowStyleElement,
+            'allowEmbeds'         => HtmlSecurityCheck::$allowEmbeds,
+            'iframeHosts'         => HtmlSecurityCheck::$iframeHosts,
         ];
         foreach (['README.md', 'docs/ai-reference.md'] as $page) {
             $markdown = file_get_contents(self::ROOT . "/$page");

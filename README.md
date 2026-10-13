@@ -70,11 +70,12 @@ The switches are static properties, set once at startup. The defaults suit a CMS
 staff edit its own pages:
 
 ```php
-HtmlSecurityCheck::$allowForms   = false;   // <form>, <input>, <button> and the other form elements: a form can imitate a login box
-HtmlSecurityCheck::$allowStyles  = true;    // the style attribute and the <style> element, both checked for CSS that could run or leak
-HtmlSecurityCheck::$allowEmbeds  = true;    // <iframe> whose src points at a host in $iframeHosts
-HtmlSecurityCheck::$iframeHosts  = ['www.youtube.com', 'www.youtube-nocookie.com', 'player.vimeo.com', 'www.google.com'];
-HtmlSecurityCheck::$urlSchemes   = ['http', 'https', 'mailto', 'tel'];   // what a link may start with; add sms or an app link if your visitors' machines should open it
+HtmlSecurityCheck::$allowForms          = false;   // <form>, <input>, <button> and the other form elements: a form can imitate a login box
+HtmlSecurityCheck::$allowStyleAttribute = true;    // style="...", checked for CSS that could run or leak; it styles its own element only
+HtmlSecurityCheck::$allowStyleElement   = true;    // <style>, checked the same way; its rules can restyle anything on the page
+HtmlSecurityCheck::$allowEmbeds         = true;    // <iframe> whose src points at a host in $iframeHosts
+HtmlSecurityCheck::$iframeHosts         = ['www.youtube.com', 'www.youtube-nocookie.com', 'player.vimeo.com', 'www.google.com'];
+HtmlSecurityCheck::$urlSchemes          = ['http', 'https', 'mailto', 'tel'];   // what a link may start with; add sms or an app link if your visitors' machines should open it
 ```
 
 ## What It Blocks

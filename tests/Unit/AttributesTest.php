@@ -154,11 +154,12 @@ final class AttributesTest extends HtmlSecurityCheckTestCase
         });
     }
 
-    public function testStyleAttributeFollowsAllowStyles(): void
+    public function testStyleAttributeFollowsAllowStyleAttribute(): void
     {
         $this->assertAccepts('<p style="color: red">x</p>');
-        $this->withSettings(['allowStyles' => false], function () {
+        $this->withSettings(['allowStyleAttribute' => false], function () {
             $this->assertRejects('<p style="color: red">x</p>', 'attribute-not-allowed', 'style');
+            $this->assertAccepts('<style>p { color: red }</style>');
         });
     }
 

@@ -47,7 +47,7 @@ final class HtmlSecurityCheck
      * is text to a browser and has no use in content (plaintext, xmp, noembed, noframes).
      * Includes the obsolete presentational elements old content still holds (font, center,
      * strike, big, tt, marquee and friends), since browsers render them without script.
-     * style, iframe and the form elements are not here: they pass by their switch ($allowStyles,
+     * style, iframe and the form elements are not here: they pass by their switch ($allowStyleElement,
      * $allowEmbeds, and $allowForms with FORM_ELEMENTS).
      */
     public const ELEMENTS = [
@@ -72,7 +72,7 @@ final class HtmlSecurityCheck
     /**
      * Attribute names that pass, on any element. Every other name is refused, including the ones a page's own
      * JavaScript reads as code (Alpine x-init, HTMX hx-get, Vue @click, Stimulus data-action). A listed name
-     * can still be refused: style when $allowStyles is off. Every value still gets the URL and CSS checks.
+     * can still be refused: style when $allowStyleAttribute is off. Every value still gets the URL and CSS checks.
      */
     public const ATTRIBUTES = [
         // The HTML Standard's attribute index, minus srcdoc (a whole document with script allowed), formaction
@@ -190,9 +190,10 @@ final class HtmlSecurityCheck
     private const CONTROL_CHARACTER = '/[\x00-\x08\x0B\x0C\x0E-\x1F]/';
 
     // Switches. Set once at startup; every check() call reads them.
-    public static bool $allowForms   = false;   // form elements and formaction
-    public static bool $allowStyles  = true;    // the style attribute and the <style> element, both through the CSS check
-    public static bool $allowEmbeds  = true;    // <iframe> whose src host is in $iframeHosts
+    public static bool $allowForms          = false;   // form elements and formaction
+    public static bool $allowStyleAttribute = true;    // style="...", through the CSS check; it styles its own element only
+    public static bool $allowStyleElement   = true;    // <style>, through the CSS check; its rules can style anything on the page
+    public static bool $allowEmbeds         = true;    // <iframe> whose src host is in $iframeHosts
 
     /**
      * @var string[] hosts an <iframe src> may point at, matched exactly and case-insensitively
@@ -232,27 +233,28 @@ final class HtmlSecurityCheck
     /**
      * Returns the rule tables and the current switches, keyed by name: elements, formElements,
      * attributes, attributePrefixes, officeNamespaces, formAttributes, urlSchemes, scriptSchemes, cssUrlSchemes,
-     * urlAttributes, allowForms, allowStyles, allowEmbeds, iframeHosts. For documentation, debugging and settings pages.
+     * urlAttributes, allowForms, allowStyleAttribute, allowStyleElement, allowEmbeds, iframeHosts. For documentation, debugging and settings pages.
      *
      * @return array<string, mixed>
      */
     public static function rules(): array
     {
         return [
-            'elements'          => self::ELEMENTS,
-            'formElements'      => self::FORM_ELEMENTS,
-            'attributes'        => self::ATTRIBUTES,
-            'attributePrefixes' => self::ATTRIBUTE_PREFIXES,
-            'officeNamespaces'  => self::OFFICE_NAMESPACES,
-            'formAttributes'    => self::FORM_ATTRIBUTES,
-            'urlSchemes'        => self::urlSchemes(),
-            'scriptSchemes'     => self::SCRIPT_SCHEMES,
-            'cssUrlSchemes'     => self::CSS_URL_SCHEMES,
-            'urlAttributes'     => self::URL_ATTRIBUTES,
-            'allowForms'        => self::$allowForms,
-            'allowStyles'       => self::$allowStyles,
-            'allowEmbeds'       => self::$allowEmbeds,
-            'iframeHosts'       => self::$iframeHosts,
+            'elements'            => self::ELEMENTS,
+            'formElements'        => self::FORM_ELEMENTS,
+            'attributes'          => self::ATTRIBUTES,
+            'attributePrefixes'   => self::ATTRIBUTE_PREFIXES,
+            'officeNamespaces'    => self::OFFICE_NAMESPACES,
+            'formAttributes'      => self::FORM_ATTRIBUTES,
+            'urlSchemes'          => self::urlSchemes(),
+            'scriptSchemes'       => self::SCRIPT_SCHEMES,
+            'cssUrlSchemes'       => self::CSS_URL_SCHEMES,
+            'urlAttributes'       => self::URL_ATTRIBUTES,
+            'allowForms'          => self::$allowForms,
+            'allowStyleAttribute' => self::$allowStyleAttribute,
+            'allowStyleElement'   => self::$allowStyleElement,
+            'allowEmbeds'         => self::$allowEmbeds,
+            'iframeHosts'         => self::$iframeHosts,
         ];
     }
 
@@ -401,7 +403,7 @@ final class HtmlSecurityCheck
     //region Fast Path
 
     /**
-     * @var array<string, string> the known-safe regex by the settings it reads ($allowStyles and $urlSchemes), built on first use
+     * @var array<string, string> the known-safe regex by the settings it reads ($allowStyleAttribute and $urlSchemes), built on first use
      */
     private static array $knownSafe = [];
 
@@ -415,7 +417,7 @@ final class HtmlSecurityCheck
      */
     private static function knownSafePattern(): string
     {
-        $styles  = (int)self::$allowStyles;
+        $styles  = (int)self::$allowStyleAttribute;
         $schemes = self::urlSchemes();
         $key     = $styles . ' ' . implode(' ', $schemes);
         if (isset(self::$knownSafe[$key])) {
@@ -470,7 +472,7 @@ final class HtmlSecurityCheck
             return true;
         }
         return match ($name) {
-            'style'  => self::$allowStyles,
+            'style'  => self::$allowStyleElement,
             'iframe' => self::$allowEmbeds,
             default  => (self::$allowForms && in_array($name, self::FORM_ELEMENTS, true))
                         || preg_match(self::WORD_ELEMENT, $name) === 1,
@@ -508,12 +510,12 @@ final class HtmlSecurityCheck
 
     /**
      * A listed name, a listed prefix, an xmlns:* declaration of an Office namespace, or formaction while
-     * $allowForms is on. style is listed but passes only while $allowStyles is on
+     * $allowForms is on. style is listed but passes only while $allowStyleAttribute is on
      */
     private static function attributeAllowed(string $attribute, string $value): bool
     {
         if (in_array($attribute, self::ATTRIBUTES, true)) {
-            return $attribute !== 'style' || self::$allowStyles;
+            return $attribute !== 'style' || self::$allowStyleAttribute;
         }
         if (str_starts_with($attribute, 'xmlns:')) {
             return self::startsWithAny($value, self::OFFICE_NAMESPACES);

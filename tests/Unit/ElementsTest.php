@@ -177,11 +177,12 @@ final class ElementsTest extends HtmlSecurityCheckTestCase
     //endregion
     //region Elements With a Switch
 
-    public function testStyleElementFollowsAllowStyles(): void
+    public function testStyleElementFollowsAllowStyleElement(): void
     {
         $this->assertAccepts('<style>p { color: red }</style>');
-        $this->withSettings(['allowStyles' => false], function () {
+        $this->withSettings(['allowStyleElement' => false], function () {
             $this->assertRejects('<style>p { color: red }</style>', 'element-not-allowed', '<style>');
+            $this->assertAccepts('<p style="color: red">x</p>');
         });
     }
 

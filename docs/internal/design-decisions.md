@@ -200,7 +200,7 @@ a typical page checks in 0.004 to 0.045 ms against 0.04 to 0.31 ms without the f
 the 1 MB tag-dense shape in 2.3 ms against 46.3 ms, and the hostile megabyte of `<` in
 2.0 ms against 180 ms, since a `<` that starts nothing is text to the regex too. What remains
 of a check on clean content is the byte checks and one regex match. Building the regex costs
-about 1 µs, a tenth of a 1 KB check, so it is built once per value of `$allowStyles` and
+about 1 µs, a tenth of a 1 KB check, so it is built once per value of `$allowStyleAttribute` and
 `$urlSchemes`. Outside `style`, `aria-*` and the URL attributes it lists only the sixteen
 attribute names editors write most. With the whole allowlist the regex took 500 KB more memory
 under PCRE's JIT on PHP 8.5 and checked the corpus 5% slower (dedicated server, 2026-10-08).
@@ -458,8 +458,14 @@ and in every email template).
 
 Email-style HTML fields put `<style>` in the body, and Word pastes put `mso-*` properties in
 `style` attributes. Both pass through the CSS check. Raised again 2026-09-14 over the
-selector leak above; settled by refusing the two selectors instead of the element. The
-styles switch turns both the element and the attribute off for a site that wants neither.
+selector leak above; settled by refusing the two selectors instead of the element.
+
+The element and the attribute have a switch each, both on by default. A `style` attribute
+styles only its own element. A `<style>` element can style anything on the page: hide the
+real login form, restyle the site header, or turn off a `contain: paint` box the page puts
+around the content (`div[style*=contain] { contain: none }`). A site that relies on that box
+turns `$allowStyleElement` off and keeps inline styles. One switch for both was rejected for
+that reason.
 
 ## Iframes: A Host List
 
@@ -477,7 +483,7 @@ current browser and the record needs the `<iframe>` code anyway.
 
 ## Switches Are Static Properties
 
-Three switches (`$allowForms`, `$allowStyles`, `$allowEmbeds`) and two lists (`$iframeHosts`,
+Four switches (`$allowForms`, `$allowStyleAttribute`, `$allowStyleElement`, `$allowEmbeds`) and two lists (`$iframeHosts`,
 `$urlSchemes`) are public static properties on `HtmlSecurityCheck`, like SvgSecurityCheck's limits.
 Set once at startup, read by every `check()`.
 

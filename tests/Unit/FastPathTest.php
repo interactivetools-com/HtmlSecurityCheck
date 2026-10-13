@@ -22,7 +22,7 @@ use ReflectionMethod;
  * - the check reports the same violations with the fast path on and off, over the fixtures,
  *   every html5lib tokenizer input, and the downloaded corpus when it is present
  *
- * Both values of $allowStyles are covered, since the regex changes with it.
+ * Both values of $allowStyleAttribute are covered, since the regex changes with it.
  */
 final class FastPathTest extends HtmlSecurityCheckTestCase
 {
@@ -83,8 +83,8 @@ final class FastPathTest extends HtmlSecurityCheckTestCase
     #[DataProvider('tokenizedContentProvider')]
     public function testSkippedRunsPassOnTheirOwn(string $html): void
     {
-        foreach ([true, false] as $allowStyles) {
-            $this->withSettings(['allowStyles' => $allowStyles, 'fastPath' => false], function () use ($html) {
+        foreach ([true, false] as $allowStyleAttribute) {
+            $this->withSettings(['allowStyleAttribute' => $allowStyleAttribute, 'fastPath' => false], function () use ($html) {
                 foreach (self::skippedRuns($html) as $run) {
                     $this->assertAccepts($run);
                     foreach ((new Tokenizer($run))->tokens() as $token) {
@@ -189,8 +189,8 @@ final class FastPathTest extends HtmlSecurityCheckTestCase
     #[DataProvider('nearMissProvider')]
     public function testNearMissIsNotSkipped(string $html): void
     {
-        foreach ([true, false] as $allowStyles) {
-            $this->withSettings(['allowStyles' => $allowStyles], function () use ($html) {
+        foreach ([true, false] as $allowStyleAttribute) {
+            $this->withSettings(['allowStyleAttribute' => $allowStyleAttribute], function () use ($html) {
                 $this->assertSame(0, preg_match(self::pattern(), $html), "the fast path matched: $html");
             });
         }
@@ -248,9 +248,9 @@ final class FastPathTest extends HtmlSecurityCheckTestCase
 
     private function assertSameOnAndOff(string $html): void
     {
-        foreach ([true, false] as $allowStyles) {
-            $on  = $this->withSettings(['allowStyles' => $allowStyles, 'fastPath' => true], fn() => HtmlSecurityCheck::check($html));
-            $off = $this->withSettings(['allowStyles' => $allowStyles, 'fastPath' => false], fn() => HtmlSecurityCheck::check($html));
+        foreach ([true, false] as $allowStyleAttribute) {
+            $on  = $this->withSettings(['allowStyleAttribute' => $allowStyleAttribute, 'fastPath' => true], fn() => HtmlSecurityCheck::check($html));
+            $off = $this->withSettings(['allowStyleAttribute' => $allowStyleAttribute, 'fastPath' => false], fn() => HtmlSecurityCheck::check($html));
             $this->assertSame(self::violations($off), self::violations($on), 'fast path on and off disagree on: ' . json_encode($html, JSON_UNESCAPED_UNICODE));
         }
     }
