@@ -80,8 +80,8 @@ HtmlSecurityCheck::$urlSchemes          = ['http', 'https', 'mailto', 'tel'];   
 - **A whole pasted page:** `<html>`, `<head>`, `<body>` and `<title>`.
 
 Element names, attribute names, iframe hosts, the schemes on `href`, `src` and the other URL
-attributes, and CSS function names and at-rules must be on the check's lists, so anything it
-doesn't know is rejected. CSS `url()` must be `http:`, `https:` or a relative path, and a few
+attributes, and CSS function names and at-rules must be on the check's allowlists, so anything
+it doesn't know is rejected. CSS `url()` must be `http:`, `https:` or a relative path, and a few
 patterns the lists can't catch (`\` escapes, `behavior:`, `[value^=`) are rejected on their own.
 
 ## Additional Protection
