@@ -253,7 +253,7 @@ final class HtmlSecurityCheck
     public static array $urlSchemes = ['http', 'https', 'mailto', 'tel'];
 
     // Limits
-    public static int $maxErrors       = 50;    // distinct errors reported per check
+    public static int $maxErrors       = 50;    // distinct errors reported per check; below 1 counts as 1
     public static int $maxDetailLength = 80;    // characters of content quoted in an error message before "..."
 
     // Text and tags the rules can never refuse are stepped over in one regex match instead of one token at a time.
@@ -318,8 +318,12 @@ final class HtmlSecurityCheck
     /** True for the check of a conditional comment's inner markup, which reads no conditional comment inside it */
     private bool $insideConditionalComment = false;
 
+    /** $maxErrors as this check reads it: at least 1, so content a rule refuses is never reported as passing */
+    private readonly int $errorLimit;
+
     private function __construct()
     {
+        $this->errorLimit = max(1, self::$maxErrors);
     }
 
     private function run(string $html): Result
@@ -373,7 +377,7 @@ final class HtmlSecurityCheck
     {
         $rawText = '';
         foreach ((new Tokenizer($this->html, skip: self::$fastPath ? self::knownSafePattern() : null))->tokens() as $token) {
-            if (count($this->errors) >= self::$maxErrors) {
+            if (count($this->errors) >= $this->errorLimit) {
                 return;
             }
             if ($token->type === Token::TEXT) {
@@ -454,7 +458,7 @@ final class HtmlSecurityCheck
         $check                           = new self();
         $check->insideConditionalComment = true;
         foreach ($check->run($inner)->errors as $violation) {
-            if (count($this->errors) >= self::$maxErrors) {
+            if (count($this->errors) >= $this->errorLimit) {
                 return;
             }
             $this->errors["$violation->code\0$violation->detail"] ??= $violation;
@@ -463,7 +467,7 @@ final class HtmlSecurityCheck
 
     private function fail(string $code, string $detail): void
     {
-        if (count($this->errors) >= self::$maxErrors) {
+        if (count($this->errors) >= $this->errorLimit) {
             return;   // the walk stops at the cap too, but one tag can add several errors before it checks
         }
         // one line of valid UTF-8 whatever the content held, so a log line or an error page can show it as is

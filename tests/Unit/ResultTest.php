@@ -78,6 +78,18 @@ final class ResultTest extends HtmlSecurityCheckTestCase
         });
     }
 
+    /** A limit below 1 reports one error, so refused content never comes back as passing */
+    public function testMaxErrorsBelowOneCountsAsOne(): void
+    {
+        foreach ([0, -1] as $maxErrors) {
+            $this->withSettings(['maxErrors' => $maxErrors], function () use ($maxErrors) {
+                foreach (['<script>alert(1)</script>', "caf\xE9", '<!--[if IE]><script>a</script><![endif]-->'] as $html) {
+                    $this->assertCount(1, HtmlSecurityCheck::check($html)->errors, "maxErrors $maxErrors: $html");
+                }
+            });
+        }
+    }
+
     /** Names and CSS tokens are cut too, so a 500-character attribute name gives a readable message */
     public function testEveryDetailIsCut(): void
     {
