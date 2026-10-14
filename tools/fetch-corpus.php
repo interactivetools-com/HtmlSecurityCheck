@@ -702,7 +702,7 @@ function httpGet(string $url): string
     $body   = curl_exec($curl);
     $status = curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
     if ($body === false || $status !== 200) {
-        fwrite(STDERR, "\nRequest failed (HTTP $status): $url\n" . substr((string)$body, 0, 300) . "\n");
+        fwrite(STDERR, "\nRequest failed (HTTP $status): $url\n" . addcslashes(substr((string)$body, 0, 300), "\0..\10\13..\37\177") . "\n");   // control characters as text, so an escape code in the response can't rewrite the terminal
         exit(1);
     }
     return $body;

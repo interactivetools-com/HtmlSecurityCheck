@@ -94,7 +94,7 @@ foreach ($sources as $name) {
         $html         = file_get_contents($path);
         $hash         = payloadHash($html);
         $files[$hash] = $file;
-        $label        = isset($cases[$file]) ? "$file  {$cases[$file]['title']}" : $file;
+        $label        = isset($cases[$file]) ? "$file  " . printable($cases[$file]['title']) : $file;
         $expectHere   = $cases[$file]['expect'] ?? $expect;
         $result       = HtmlSecurityCheck::check($html);
         $surprise     = $result->ok ? $expectHere === 'reject' : $expectHere === 'accept';
@@ -114,14 +114,14 @@ foreach ($sources as $name) {
                 $surprises[] = "$name/$label  [$hash]";
             }
             if ($listAccepted) {
-                $listing[] = "  $label  [$hash]\n      " . str_replace("\n", "\n      ", trim($html))
+                $listing[] = "  $label  [$hash]\n      " . str_replace("\n", "\n      ", printable(trim($html), keepLines: true))
                     . (isset($knownUsed[$hash]) ? "\n      known: {$knownHere[$hash]['reason']}" : '');
             }
             continue;
         }
         $rejected++;
         if ($surprise) {
-            $surprises[] = "$name/$label: {$result->errors[0]->message}  [$hash]";
+            $surprises[] = "$name/$label: " . printable($result->errors[0]->message) . "  [$hash]";
         }
         foreach ($result->errors as $violation) {
             $byCode[$violation->code] ??= [0, []];
@@ -130,7 +130,7 @@ foreach ($sources as $name) {
                 $byCode[$violation->code][1][] = $file;
             }
             if ($violation->code === $codeFilter) {
-                $listing[] = "  $label: $violation->message";
+                $listing[] = "  $label: " . printable($violation->message);
             }
         }
     }
@@ -182,4 +182,17 @@ function matchingRule(array $rules, Itools\HtmlSecurityCheck\Violation $violatio
 function payloadHash(string $html): string
 {
     return substr(hash('sha256', $html), 0, 12);
+}
+
+/**
+ * Text from a downloaded file, ready for the terminal: control characters are shown as \033, \x9b
+ * and so on, since an escape code in a title could erase or rewrite the lines around it.
+ *
+ *     echo printable("evil\e[1A\e[2Ktitle");          // evil\033[1A\033[2Ktitle, printed as text
+ *     echo printable($html, keepLines: true);        // line breaks and tabs stay
+ */
+function printable(string $text, bool $keepLines = false): string
+{
+    $text = addcslashes($text, $keepLines ? "\0..\10\13..\37\177" : "\0..\37\177");
+    return preg_replace_callback('/\xC2[\x80-\x9F]/', fn(array $m) => sprintf('\x%02x', ord($m[0][1])), $text);   // U+0080 to U+009F: xterm reads U+009B as an escape code too
 }
