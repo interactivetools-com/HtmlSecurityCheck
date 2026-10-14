@@ -311,13 +311,14 @@ storeitemid temporary text xpath namespaceuri
 
 **`cssFunctions`** (the CSS functions that pass): <!-- rules:cssFunctions -->
 ```text
-url format local rgb rgba hsl hsla linear-gradient radial-gradient conic-gradient
-repeating-linear-gradient repeating-radial-gradient repeating-conic-gradient matrix matrix3d
-translate translatex translatey translatez translate3d scale scalex scaley scalez scale3d rotate
-rotatex rotatey rotatez rotate3d skew skewx skewy perspective blur brightness contrast drop-shadow
-grayscale hue-rotate invert opacity saturate sepia circle ellipse inset polygon path rect calc var
-min max clamp minmax repeat fit-content counter counters cubic-bezier steps not is where has
-nth-child nth-last-child nth-of-type nth-last-of-type lang dir
+url format local rgb rgba hsl hsla hwb lab lch oklab oklch color color-mix light-dark
+linear-gradient radial-gradient conic-gradient repeating-linear-gradient repeating-radial-gradient
+repeating-conic-gradient matrix matrix3d translate translatex translatey translatez translate3d
+scale scalex scaley scalez scale3d rotate rotatex rotatey rotatez rotate3d skew skewx skewy
+perspective blur brightness contrast drop-shadow grayscale hue-rotate invert opacity saturate sepia
+circle ellipse inset polygon path rect calc var min max clamp minmax repeat fit-content counter
+counters cubic-bezier steps not is where has nth-child nth-last-child nth-of-type nth-last-of-type
+lang dir
 ```
 <!-- /rules:cssFunctions -->
 

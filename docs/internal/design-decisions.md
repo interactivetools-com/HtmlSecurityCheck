@@ -439,7 +439,10 @@ Function names and at-rules became allowlists (settled 2026-10-13, as in SvgSecu
 refuses it until it is listed. The lists were built from the corpus: Word pastes need
 `@font-face`, `@page` and `@list`, Wikipedia and the email templates need `@media`,
 `@supports`, gradients, filters and `:not()`, and the rest are the color, transform, shape and
-math functions that load nothing. No real-content file changed result; seven payloads that
+math functions that load nothing. The CSS Color 4 and 5 functions (`oklch()`, `lab()`,
+`color-mix()`, `light-dark()` and the rest) are not in the corpus but are listed anyway:
+Tailwind 4 writes its colors as `oklch()`, and a copy from a web page can carry them into the
+editor as inline styles. No real-content file changed result; seven payloads that
 passed as known non-issues (Netscape's `<style type="text/javascript">`, IE6's fullwidth
 `ｅｘｐｒｅｓｓｉｏｎ(`) are now refused for the `alert(` or `write(` inside them. The banned
 list keeps what an allowlist of names cannot see: the backslash, `behavior:` and

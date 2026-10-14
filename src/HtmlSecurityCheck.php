@@ -155,7 +155,7 @@ final class HtmlSecurityCheck
      */
     public const CSS_FUNCTIONS = [
         'url', 'format', 'local',                                                                 // references, @font-face
-        'rgb', 'rgba', 'hsl', 'hsla',                                                             // colors
+        'rgb', 'rgba', 'hsl', 'hsla', 'hwb', 'lab', 'lch', 'oklab', 'oklch', 'color', 'color-mix', 'light-dark',   // colors
         'linear-gradient', 'radial-gradient', 'conic-gradient', 'repeating-linear-gradient', 'repeating-radial-gradient', 'repeating-conic-gradient',
         'matrix', 'matrix3d', 'translate', 'translatex', 'translatey', 'translatez', 'translate3d', 'scale', 'scalex', 'scaley',
         'scalez', 'scale3d', 'rotate', 'rotatex', 'rotatey', 'rotatez', 'rotate3d', 'skew', 'skewx', 'skewy', 'perspective',

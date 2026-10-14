@@ -40,6 +40,7 @@ final class CssTest extends HtmlSecurityCheckTestCase
             'position fixed'        => ['position: fixed; top: 0; z-index: 9999'],   // a phishing overlay, not script: a known non-goal
             'scroll-behavior'       => ['scroll-behavior: smooth; overscroll-behavior: contain'],
             'charset'               => ['@charset "UTF-7";'],   // read only at the start of a stylesheet file, never in a page
+            'modern colors'         => ['color: oklch(0.55 0.2 250); background: color-mix(in srgb, lab(50% 40 59), hwb(0 0% 0%)); border-color: light-dark(#000, #fff)'],   // Tailwind 4 writes oklch()
             'gradient'              => ['background: linear-gradient(to right, rgba(0,0,0,.5), #fff)'],
             'transform and calc'    => ['transform: translateX(calc(100% - 2px)) rotate(45deg); width: var(--w, min(10px, 2em))'],
             'at sign in a bare url' => ['background: url(https://cdn.example.com/logo@2x.png)'],   // part of the URL, not an at-rule
