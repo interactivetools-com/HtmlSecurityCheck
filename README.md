@@ -71,8 +71,8 @@ HtmlSecurityCheck::$urlSchemes          = ['http', 'https', 'mailto', 'tel'];   
   `<base>`, and `x-init=`, `data-*` and custom elements, which the page's own JavaScript
   (Alpine, Stimulus, web components) would run.
 - **Sending page data to another host:** `<link rel="stylesheet">`, CSS selectors such as
-  `input[value^="a"]` with a `url()`, and a tag left open at the end, which turns the page text
-  up to the next quote into part of its URL.
+  `input[value^="a"]`, which a `url()` can use to send out what a field holds, and a tag left
+  open at the end, which turns the page text up to the next quote into part of its URL.
 - **Misleading the visitor:** `<meta http-equiv="refresh">`, `<form>`, an `<iframe>` from a
   host not in `$iframeHosts`, and links with `search-ms:` or another scheme that opens a program.
 - **Markup that browsers and other parsers read differently:** `<svg>`, `<template>`,
@@ -91,7 +91,7 @@ patterns the lists can't catch (`\` escapes, `behavior:`, `[value^=`) are reject
   value.
 - **End tags.** A `</div>` in the content passes even when it closes one of your page's
   elements, so the content can end a wrapper early.
-- **Anything that runs no script.** Images and `url()` on other hosts, `position: fixed`
+- **Everything else.** Images and `url()` on other hosts, `position: fixed`
   overlays, invalid HTML, `id` or `name` values that match a page script's variables, and
   length all pass. Cap the size before the check; check time grows in step with size.
 
