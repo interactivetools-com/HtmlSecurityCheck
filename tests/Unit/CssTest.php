@@ -40,6 +40,10 @@ final class CssTest extends HtmlSecurityCheckTestCase
             'position fixed'        => ['position: fixed; top: 0; z-index: 9999'],   // a phishing overlay, not script: a known non-goal
             'scroll-behavior'       => ['scroll-behavior: smooth; overscroll-behavior: contain'],
             'charset'               => ['@charset "UTF-7";'],   // read only at the start of a stylesheet file, never in a page
+            'gradient'              => ['background: linear-gradient(to right, rgba(0,0,0,.5), #fff)'],
+            'transform and calc'    => ['transform: translateX(calc(100% - 2px)) rotate(45deg); width: var(--w, min(10px, 2em))'],
+            'at sign in a bare url' => ['background: url(https://cdn.example.com/logo@2x.png)'],   // part of the URL, not an at-rule
+            'function in a string'  => ["content: 'image-set( @import'"],
             'empty'                 => [''],
         ];
     }
@@ -48,6 +52,15 @@ final class CssTest extends HtmlSecurityCheckTestCase
     {
         $this->assertAccepts('<style>@media print { p { display: none } } .a::before { content: "x" }</style>');
         $this->assertRejects('<style>.a::before { content: "<script>" }</style>', 'less-than-in-text', '<script>" }');   // text to the tokenizer, never a script tag; the < is refused on its own
+    }
+
+    /** What Word, Mailchimp and Wikipedia stylesheets use: the at-rules on CSS_AT_RULES and functions inside them */
+    public function testStyleElementAtRulesPass(): void
+    {
+        $this->assertAccepts('<style>@font-face { font-family: "Cambria Math"; src: local("Cambria Math"), url(f.woff) format("woff") }</style>');
+        $this->assertAccepts('<style>@page WordSection1 { size: 612.0pt 792.0pt } @list l0:level1 { mso-level-tab-stop: none }</style>');
+        $this->assertAccepts('<style>@media(min-width:720px){.a:not(.b){color:red}}@supports (display:grid){.c{display:grid}}</style>');
+        $this->assertAccepts('<style>@keyframes spin { to { transform: rotate(360deg) } }</style>');
     }
 
     public function testTextAfterStyleIsNotCss(): void
@@ -83,6 +96,10 @@ final class CssTest extends HtmlSecurityCheckTestCase
             'image function'        => ['background: image(x.png)', 'image('],
             'image-set function'    => ['background: image-set(x.png 1x)', 'image-set('],
             'src function'          => ['background: src(x.png)', 'src('],
+            'prefixed image-set'    => ['background: -webkit-image-set(x.png 1x)', '-webkit-image-set('],
+            'unlisted function'     => ['background: cross-fade(url(a.png), url(b.png), 50%)', 'cross-fade('],   // a function browsers add later is refused until it is listed
+            'unlisted at-rule'      => ['@layer base { p { color: red } }', '@layer'],
+            'function after url'    => ['background: url(a.png) element(#a)', 'element('],   // the url() is stepped over, the scan resumes after it
             'javascript url'        => ['background: url(javascript:x)', 'url(javascript:x)'],
             'javascript url quoted' => ["background: url('javascript:x')", 'url(javascript:x)'],
             'javascript url spaced' => ['background: url( javascript:x )', 'url(javascript:x)'],

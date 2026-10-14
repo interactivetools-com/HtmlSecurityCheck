@@ -22,8 +22,10 @@ rejects anything that could run script in the page it is printed into, with a `R
   refused. `href`, `src` and the other URL attributes limited to `http:`, `https:`, `mailto:`,
   `tel:` or no scheme, plus `data:image/...` on `<img src>`; `javascript:` refused at the
   start of every attribute value.
-- **CSS check** on the `style` attribute and the `<style>` element: the constructs that ran
-  script in some browser, `url()` limited to `http:`, `https:` or relative, and the two
+- **CSS check** on the `style` attribute and the `<style>` element: function names and
+  at-rules must be on allowlists (`image-set(`, `expression(` and `@import` are not), the
+  backslash and the properties that ran script in old IE and Firefox are refused, `url()`
+  is limited to `http:`, `https:` or relative, and the two
   selectors that leak page data (`[attr^=]` and friends on any attribute but `style`, `src`
   and `class`, and `unicode-range`).
 - **Switches** as static properties: `$allowForms` (off), `$allowStyleAttribute` (on),

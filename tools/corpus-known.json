@@ -61,10 +61,6 @@
                 "payload": "<div>text <!--[if IE]> <!-- IE specific --> comment <[endif]--></div>",
                 "reason": "a comment opened inside a conditional comment has no close before the outer -->; the inside is checked as markup and reports it unclosed, and the markup is broken in every browser anyway"
             },
-            "69ff580fabd4": {
-                "payload": "<STYLE TYPE=\"text/javascript\">alert('XSS');</STYLE>",
-                "reason": "a style element with a JavaScript type ran only in Netscape 4"
-            },
             "2c10da9f69e0": {
                 "payload": "<BR SIZE=\"&{alert('XSS')}\">",
                 "reason": "&{...} JavaScript entities, Netscape 4 only"
@@ -231,10 +227,6 @@
                 "payload": "<div id=\"60\"><div style=\"[a]color[b]:[c]red\">XXX</div>//[\"'`-->]]>]</d...",
                 "reason": "[a] inside a CSS property; only old IE ignored the brackets"
             },
-            "d3889bf66595": {
-                "payload": "<div id=\"80\"><style>*{x:ｅｘｐｒｅｓｓｉｏｎ(alert(80))}</style>//[\"'`-->]]>]</d...",
-                "reason": "fullwidth letters spelling expression(); only IE6 folded them to ASCII"
-            },
             "d1bb25763ff3": {
                 "payload": "<div id=\"90\"><!-- Up to Opera 10.63 --> <div style=content:url(test2.s...",
                 "reason": "SVG through CSS content: and background: url(); script ran only in Opera 12 and older"
@@ -271,10 +263,6 @@
     },
     "html5lib": {
         "cases": {
-            "533a88555f46": {
-                "payload": "<div style=\"background-image:¥¢l('ja¦a£c¢i ¤:ale¢¤(.1027X.1053S')')\">f...",
-                "reason": "url( spelled in another charset; a UTF-8 page reads the bytes as ordinary characters"
-            },
             "16e2cc911d14": {
                 "payload": "<img src=`javascript:alert('XSS')` />",
                 "reason": "backtick quoting; per HTML5 the unquoted value starts at the backtick and no handler attribute exists"
@@ -335,10 +323,6 @@
             "fd221a686275": {
                 "payload": "<// style=x:expression\\28write(1)\\29>",
                 "reason": "<// starts a bogus comment, so nothing here is a tag; and expression() is IE-only"
-            },
-            "039a297d6f66": {
-                "payload": "<style>*{x:ｅｘｐｒｅｓｓｉｏｎ(write(1))}</style>",
-                "reason": "fullwidth letters spelling expression(); only IE6 folded them to ASCII"
             },
             "f1cef6e2407c": {
                 "payload": "<?xml-stylesheet type=\"text/css\" href=\"data:,*%7bx:expression(write(2)...",
@@ -729,10 +713,6 @@
                 "payload": "<// style=x:expression\\28javascript:alert(1)\\29>",
                 "reason": "<// starts a bogus comment, so nothing here is a tag; and expression() is IE-only"
             },
-            "0559a3739d5b": {
-                "payload": "<style>*{x:ｅｘｐｒｅｓｓｉｏｎ(javascript:alert(1))}</style>",
-                "reason": "fullwidth letters spelling expression(); only IE6 folded them to ASCII"
-            },
             "cf268e6295a4": {
                 "payload": "<div style=content:url(%(svg)s)></div>",
                 "reason": "a Python placeholder in a relative url(); no scheme"
@@ -764,14 +744,6 @@
             "5afd7337ba7c": {
                 "payload": "<IMG SRC=&{javascript:alert(1);};>",
                 "reason": "&{...} JavaScript entities, Netscape 4 only"
-            },
-            "f288276d49de": {
-                "payload": "<STYLE TYPE=\"text/javascript\">javascript:alert(1);</STYLE>",
-                "reason": "a style element with a JavaScript type ran only in Netscape 4"
-            },
-            "69ff580fabd4": {
-                "payload": "<STYLE TYPE=\"text/javascript\">alert('XSS');</STYLE>",
-                "reason": "a style element with a JavaScript type ran only in Netscape 4"
             },
             "535ef5e233fe": {
                 "payload": "<!--#exec cmd=\"/bin/echo '<SCR'\"--><!--#exec cmd=\"/bin/echo 'IPT SRC=h...",

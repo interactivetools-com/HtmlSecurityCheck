@@ -41,11 +41,15 @@ final class Violation
         'unclosed-markup'        => '%s is not closed',
     ];
 
+    /** the message with %s in place of detail; one holds <, so encode the sprintf() result, not the parts */
     public readonly string $template;
+
+    /** holds text from the content, raw: encode it for wherever it goes (htmlspecialchars() for a page) */
     public readonly string $message;
 
     public function __construct(
         public readonly string $code,
+        /** text from the content, raw: encode it for wherever it goes (htmlspecialchars() for a page) */
         public readonly string $detail,
     ) {
         $this->template = self::TEMPLATES[$code];

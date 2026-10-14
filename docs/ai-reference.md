@@ -50,7 +50,7 @@ HtmlSecurityCheck::rules(): array                // the rule tables and the curr
 
 `rules()` returns an array with the keys `elements`, `formElements`, `attributes`,
 `attributePrefixes`, `officeNamespaces`, `formAttributes`, `urlSchemes`, `scriptSchemes`,
-`cssUrlSchemes`, `urlAttributes`, `allowForms`, `allowStyleAttribute`, `allowStyleElement`,
+`cssUrlSchemes`, `cssFunctions`, `cssAtRules`, `urlAttributes`, `allowForms`, `allowStyleAttribute`, `allowStyleElement`,
 `allowEmbeds` and `iframeHosts`. See [Rule Tables](#rule-tables).
 The keys are copies of the constants and the current switch values; changing the returned
 array changes nothing.
@@ -165,7 +165,7 @@ Every code, its template, and what `detail` holds. Templates are `Violation::TEM
 | `attribute-not-allowed`  | `The %s attribute is not allowed`                                                               | the attribute name, lowercased (`data-id`, `x-init`, `srcdoc`), or for an `xmlns:*` declaration the name and value (`xmlns:o="http://www.w3.org/1999/xhtml"`) |
 | `url-scheme-not-allowed` | `%s uses a URL scheme that is not allowed`                                                      | the attribute name and its decoded value (`href="javascript:alert(1)"`)                                                                                   |
 | `iframe-host`            | `Embedding frames from %s is not allowed`                                                       | the `src` value with whitespace removed (`https://evil.example/x`), or `(no src)`                                                                         |
-| `css-not-allowed`        | `CSS containing %s is not allowed`                                                              | the banned token as matched (`expression(`, `\`, `[value^=`, `unicode-range`) or the `url()` with its target (`url(javascript:x)`), or the first 80 characters of a block past the PCRE limit (megabytes of `x*|` pairs inside one `[`) |
+| `css-not-allowed`        | `CSS containing %s is not allowed`                                                              | the function or at-rule as written (`expression(`, `@import`), the banned token as matched (`\`, `[value^=`, `unicode-range`) or the `url()` with its target (`url(javascript:x)`), or the first 80 characters of a block past the PCRE limit (megabytes of `x*|` pairs inside one `[`) |
 | `less-than-in-text`      | `A < where a browser reads text, not tags: %s`                                                  | the text from that `<` to the end of the raw text or comment (`<img src=x onerror=alert(1)>`, `<b> c`)                                                    |
 | `unclosed-markup`        | `%s is not closed`                                                                              | the unfinished markup from where it opened to the end of the content (`<img src="//evil.example/?`, `<!-- hidden`, `<style>p { }`)                        |
 
@@ -200,12 +200,13 @@ them.
 - **Iframes.** `src` must be `https://`, `http://` or `//`, then a host in `$iframeHosts`
   matched whole (`player.vimeo.com` is not `vimeo.com`; no port, no subdomains), then the
   end or `/`, `?` or `#`. Otherwise `iframe-host`.
-- **CSS**, in `style` attributes and `<style>` text, is the one check that lists what it
-  refuses: `\`, `@import`, `image(`, `image-set(`, `src(`, `expression(`, `behavior:`,
-  `-ms-behavior:`, `-moz-binding`, `unicode-range`, and `[attr^=`, `$=` or `*=` on any
-  attribute but `style`, `src` and `class`. `url()` must be relative or in `CSS_URL_SCHEMES`
-  (`http`, `https`). Comments and quoted strings are skipped for the token list. Everything
-  else passes: `position: fixed`, `mso-*`, `@media`, `@font-face`.
+- **CSS**, in `style` attributes and `<style>` text. Function names must be in
+  `CSS_FUNCTIONS` and at-rules in `CSS_AT_RULES` (lists below), so `image-set(`,
+  `expression(` and `@import` are refused. Also refused: `\`, `behavior:`, `-ms-behavior:`,
+  `-moz-binding`, `unicode-range`, and `[attr^=`, `$=` or `*=` on any attribute but `style`,
+  `src` and `class`. `url()` must be relative or in `CSS_URL_SCHEMES` (`http`, `https`).
+  Comments and quoted strings are skipped. Property names are not checked: `position: fixed`
+  and `mso-*` pass.
 - **Parser differences.** Invalid UTF-8 or a control character other than tab, LF and CR is
   the only error reported. A `<` inside `<style>`, `<iframe>`, `<textarea>` or a comment that
   is not `<!-- -->` (`<?php ?>`, `<!x>`) is `less-than-in-text`; a `<!--` inside `<style>`
@@ -307,6 +308,22 @@ storeitemid temporary text xpath namespaceuri
 **`cssUrlSchemes`** (allowed in a CSS `url()`): <!-- rules:cssUrlSchemes -->
 `http`, `https`
 <!-- /rules:cssUrlSchemes -->
+
+**`cssFunctions`** (the CSS functions that pass): <!-- rules:cssFunctions -->
+```text
+url format local rgb rgba hsl hsla linear-gradient radial-gradient conic-gradient
+repeating-linear-gradient repeating-radial-gradient repeating-conic-gradient matrix matrix3d
+translate translatex translatey translatez translate3d scale scalex scaley scalez scale3d rotate
+rotatex rotatey rotatez rotate3d skew skewx skewy perspective blur brightness contrast drop-shadow
+grayscale hue-rotate invert opacity saturate sepia circle ellipse inset polygon path rect calc var
+min max clamp minmax repeat fit-content counter counters cubic-bezier steps not is where has
+nth-child nth-last-child nth-of-type nth-last-of-type lang dir
+```
+<!-- /rules:cssFunctions -->
+
+**`cssAtRules`** (the CSS at-rules that pass, without the `@`): <!-- rules:cssAtRules -->
+`font-face`, `page`, `list`, `media`, `supports`, `keyframes`, `-webkit-keyframes`, `charset`
+<!-- /rules:cssAtRules -->
 
 **`urlAttributes`** (values must use `urlSchemes` or no scheme): <!-- rules:urlAttributes -->
 `href`, `src`, `action`, `formaction`, `poster`, `ping`, `srcset`, `cite`, `longdesc`, `background`

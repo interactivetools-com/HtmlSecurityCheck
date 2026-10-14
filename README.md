@@ -79,19 +79,24 @@ HtmlSecurityCheck::$urlSchemes          = ['http', 'https', 'mailto', 'tel'];   
   `<noscript>`, a `<` inside `<style>`, and bytes that are not UTF-8.
 - **A whole pasted page:** `<html>`, `<head>`, `<body>` and `<title>`.
 
-Element names, attribute names, iframe hosts and the schemes on `href`, `src` and the other URL
-attributes must be on the check's lists, so anything it doesn't know is rejected. CSS works the
-other way: it rejects a list of patterns (`expression(`, `@import`, `\` escapes, `[value^=`
-and a few more), allows `url()` only to `http:`, `https:` or a relative path, and passes the rest.
+Element names, attribute names, iframe hosts, the schemes on `href`, `src` and the other URL
+attributes, and CSS function names and at-rules must be on the check's lists, so anything it
+doesn't know is rejected. CSS `url()` must be `http:`, `https:` or a relative path, and a few
+patterns the lists can't catch (`\` escapes, `behavior:`, `[value^=`) are rejected on their own.
 
-## Recommended Extra Steps
+## Additional Protection
 
-- **Show rejected content without running it.** Print it in
-  `<iframe sandbox srcdoc="<?= htmlspecialchars($body) ?>"></iframe>`: no script, forms or
-  popups, and no access to your page or its cookies. Images and CSS still load.
+Content that passes is safe to print without these. They add a second layer in case a rule is
+ever bypassed, and cover content the check never saw:
+
+- **A Content Security Policy on pages that show it.** `script-src 'self'; object-src 'none';
+  base-uri 'none'` runs your own script files and nothing else; give inline scripts a nonce.
 - **Turn script off in the editor.** Content saved before the check existed opens there
   unchecked. Give the editor's frame the policy `script-src 'none'; object-src 'none'`
   (TinyMCE's `content_security_policy` option; iframe mode only).
+- **Show rejected content without running it.** Print it in
+  `<iframe sandbox srcdoc="<?= htmlspecialchars($body) ?>"></iframe>`: no script, forms or
+  popups, and no access to your page or its cookies. Images and CSS still load.
 
 ## What It Does Not Check
 
@@ -115,10 +120,11 @@ and a few more), allows `url()` only to `http:`, `https:` or a relative path, an
 
 ## Security
 
-Element names, attribute names, iframe hosts and URL schemes are checked against lists, so
-anything browsers add later is rejected until it is added here. CSS is checked against a list of
-rejected patterns instead, so a CSS feature browsers add later passes unless it matches one.
-Update when a new release comes out, and report HTML that gets through as described in
+Element names, attribute names, iframe hosts, URL schemes and CSS function names and at-rules
+are checked against allowlists, so anything browsers add later is rejected until it is added here.
+CSS property names are not checked, so a property browsers add later passes; every property that
+loads something today does it through `url()`, limited to `http:`, `https:` or a relative path. What the rules cannot anticipate is a browser changing how it handles something
+already allowed. Update when a new release comes out, and report HTML that gets through as described in
 [SECURITY.md](SECURITY.md).
 
 ## Related Libraries

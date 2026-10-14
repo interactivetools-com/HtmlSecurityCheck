@@ -161,17 +161,27 @@ holds no script tag.
 
 Applies to every `style` attribute value (entity-decoded) and to the text inside every
 `<style>` element (as written, no entity decoding, as in a browser). Comments and quoted
-strings are removed first (see below), then two checks run, case-insensitive:
+strings are removed first (see below), then three checks run, case-insensitive:
 
 1. Any of these tokens rejects with `css-not-allowed` and the token as the detail: a
-   backslash `\`, `@import`, `image(`, `image-set(`, `src(`, `expression(`,
-   `-moz-binding`, `behavior:` or `-ms-behavior:` as a property name (whitespace before the
+   backslash `\`, `-moz-binding`, `behavior:` or `-ms-behavior:` as a property name (whitespace before the
    colon allowed; `scroll-behavior:` and `overscroll-behavior:` pass), an attribute selector using `^=`,
    `$=` or `*=` (`[value^=`, `[ value ^=`) on any name but `style`, `src` and `class`, and
    `unicode-range`. The three names pass with spaces around them and with a namespace
    prefix (`[*|style^=`, `[|src$=`); a longer name that starts or ends with one does not
    (`[styles^=`, `[srcset*=`, `[data-src*=`).
-2. Every `url(` is read up to its closing quote, or when unquoted up to `)` or whitespace, and
+2. Every function name must be in `CSS_FUNCTIONS` and every at-rule name in `CSS_AT_RULES`,
+   or it rejects with the name as written as the detail: `image-set(`, `expression(`,
+   `-webkit-image-set(`, `cross-fade(`, `@import`, `@layer`. A function name is a whole
+   name before `(` (`x-rotate(` is `x-rotate`, not `rotate`), never one right after `@`
+   (`@media(min-width:720px)` is the at-rule). An unquoted `url()` is skipped, so the `@` in
+   `url(https://cdn.example/logo@2x.png)` and an `(` inside one are part of the URL. The
+   lists cover what editors, Word pastes, email templates and Wikipedia use: colors,
+   gradients, transforms, filters, shapes, `calc()` and `var()`, selectors such as `:not()`,
+   and `@font-face`, `@page`, `@list`, `@media`, `@supports`, `@keyframes`, `@charset`.
+   Outside resources load through functions, so a function browsers add later is refused
+   until it is listed.
+3. Every `url(` is read up to its closing quote, or when unquoted up to `)` or whitespace, and
    its scheme, read as in [URLs](#rules-urls) with tabs and newlines dropped, must be absent or
    in `CSS_URL_SCHEMES`: `http`, `https`. So
    `url(images/bg.png)`, `url(/x.png)`, `url(//cdn.example/x.png)`, `url(#clip)` and
@@ -181,16 +191,16 @@ strings are removed first (see below), then two checks run, case-insensitive:
    target is still checked. A backslash inside a quoted `url()` argument also rejects, since
    an escape there still spells a scheme: `url('\6a avascript:x')` reports `url('\`.
 
-The backslash ban is what makes the regex enough: with no escape syntax there is no way to
-spell `expression(` or `url(` that the regex reads differently from a browser. The two
+The backslash ban is what makes the regexes enough: with no escape syntax there is no way to
+spell a function name, an at-rule or `url(` that the regex reads differently from a browser. The two
 selectors and `unicode-range` are the CSS features that fire on page data: `[value^="a"]` tests
 an input's value one character at a time, and a font with `unicode-range` loads only when a
 character is on the page, so either plus a `url()` to another host reports what the page
 holds. `style`, `src` and `class` hold layout, image addresses and class names, never a
 token, so substring selectors on them pass (`div[style*="margin: 16px 0"]` in email
 templates, `img[src*="logo"]`). Exact-match selectors (`[type=text]`, `[href="https://x/"]`), `~=`, `|=`, presence
-selectors, `@font-face` without `unicode-range`, `@media`, `@keyframes`, `:hover`,
-`!important`, `position: fixed` and vendor properties (`mso-*`) are not checked.
+selectors, property names, `:hover`, `!important`, `position: fixed` and vendor properties
+(`mso-*`) are not checked.
 
 Removal reads left to right as a CSS tokenizer does: a comment runs from `/*` to `*/` or
 the end of the text, and a string from its quote to the matching quote or a bare newline.
@@ -202,9 +212,9 @@ banner, `content: '\a0'` and a font name like `'\@Yu Mincho'` pass, and `content
 cannot hide what follows it. A comment is dropped without leaving a space, as a browser
 drops it, so `[value/**/^=` still rejects and reports `[value^=`. Past the PCRE backtrack
 limit (megabytes inside one comment or string) removal is skipped and the text is checked
-as written, which is stricter. A block the token scan cannot finish within the limit
-(megabytes of `x*|` pairs inside one `[`) rejects with `css-not-allowed` and its first 80
-characters as the detail; it is never passed unchecked.
+as written, which is stricter. A block any of the three scans cannot finish within a PCRE
+limit (megabytes of `x*|` pairs inside one `[` reach it) rejects with `css-not-allowed` and
+its first 80 characters as the detail; it is never passed unchecked.
 
 ## Rules: Text That Is Not Markup
 

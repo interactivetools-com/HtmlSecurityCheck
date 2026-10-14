@@ -149,6 +149,30 @@ final class HtmlSecurityCheck
     public const CSS_URL_SCHEMES = ['http', 'https'];
 
     /**
+     * CSS functions allowed in <style> and style=, lowercase. Outside resources load through
+     * functions (url(), image-set(), src()), so a function browsers add later is refused until
+     * it is listed here. url() targets are checked on their own.
+     */
+    public const CSS_FUNCTIONS = [
+        'url', 'format', 'local',                                                                 // references, @font-face
+        'rgb', 'rgba', 'hsl', 'hsla',                                                             // colors
+        'linear-gradient', 'radial-gradient', 'conic-gradient', 'repeating-linear-gradient', 'repeating-radial-gradient', 'repeating-conic-gradient',
+        'matrix', 'matrix3d', 'translate', 'translatex', 'translatey', 'translatez', 'translate3d', 'scale', 'scalex', 'scaley',
+        'scalez', 'scale3d', 'rotate', 'rotatex', 'rotatey', 'rotatez', 'rotate3d', 'skew', 'skewx', 'skewy', 'perspective',
+        'blur', 'brightness', 'contrast', 'drop-shadow', 'grayscale', 'hue-rotate', 'invert', 'opacity', 'saturate', 'sepia',
+        'circle', 'ellipse', 'inset', 'polygon', 'path', 'rect',                                  // shapes, for clip-path and shape-outside
+        'calc', 'var', 'min', 'max', 'clamp', 'minmax', 'repeat', 'fit-content', 'counter', 'counters',
+        'cubic-bezier', 'steps',                                                                  // animation timing
+        'not', 'is', 'where', 'has', 'nth-child', 'nth-last-child', 'nth-of-type', 'nth-last-of-type', 'lang', 'dir',   // selectors
+    ];
+
+    /**
+     * CSS at-rules allowed in <style>, lowercase and without the @. Word pastes use font-face, page and
+     * list; charset is read only at the start of a stylesheet file, so in a page it does nothing.
+     */
+    public const CSS_AT_RULES = ['font-face', 'page', 'list', 'media', 'supports', 'keyframes', '-webkit-keyframes', 'charset'];
+
+    /**
      * Attributes current browsers resolve as URLs on an allowed element. Their values must have
      * no scheme or one in $urlSchemes; srcset and ping hold a list, and every URL in it is
      * checked. Every other attribute value only has to avoid SCRIPT_SCHEMES, so
@@ -168,21 +192,29 @@ final class HtmlSecurityCheck
     // next character or up to six hex digits plus one whitespace after them (the escape eats that
     // whitespace, so "\a<newline>" does not end the string). An unquoted url() runs to its ) and is
     // stepped over, since /* or a quote inside one is part of the URL, not the start of a comment or
-    // string. Nothing on CSS_FORBIDDEN can be spelled inside a comment or string, so both are removed
+    // string. No banned token, function or at-rule can be spelled inside a comment or string, so both are removed
     private const CSS_COMMENT_OR_STRING = '/(?i:url)\(\s*+(?!["\'])(?:[^)\\\\]++|\\\\.)*+\)?+(*SKIP)(*FAIL)|\/\*(?:[^*]++|\*(?!\/))*+(?:\*\/|\z)|"(?:[^"\\\\\n]++|\\\\(?:[0-9a-fA-F]{1,6}[ \t\n]?|.))*+(?:"|\n|\z)|\'(?:[^\'\\\\\n]++|\\\\(?:[0-9a-fA-F]{1,6}[ \t\n]?|.))*+(?:\'|\n|\z)/s';
 
-    // CSS that ran script in some browser, hides what the rest of the stylesheet says, or leaks page data:
-    // backslash escapes (\6a avascript), @import, the image()/image-set()/src() URL functions,
-    // IE expression() and behavior: or -ms-behavior: (as the property name, so scroll-behavior passes), Firefox -moz-binding,
-    // and the two selectors that fire on page data so a url() can report it: [attr^=value] with ^= $= *=
-    // and @font-face unicode-range.
+    // CSS the name allowlists cannot catch: backslash escapes (\6a avascript, and an escape could spell any name),
+    // IE behavior: or -ms-behavior: (as the property name, so scroll-behavior passes) and Firefox -moz-binding,
+    // which attach code through an allowed url(), and the two selectors that fire on page data so a url() can
+    // report it: [attr^=value] with ^= $= *= and @font-face unicode-range.
     // The selector passes on style, src and class, which hold layout, image addresses and class names, never a
     // token: email templates use div[style*="margin: 16px 0"] and Wikipedia img[src*="logo"]. The lookahead
     // skips those names, with or without a namespace prefix (*|, ns| or |) and spaces around them.
     // The selector's name run stops at the next [ and is possessive, so a run of brackets or of letters costs
     // one step; a plain * would backtrack across everything after a [ with no ]= behind it. The run also
     // takes *| (the any-namespace prefix), since [*|value^= matches the same attribute
-    private const CSS_FORBIDDEN = '/\\\\|@import|image\(|image-set\(|src\(|expression\(|-moz-binding|(?<![a-z0-9-])(?:-ms-)?behavior\s*:|\[(?!\s*+(?:(?:\*|[a-z0-9_-]*+)\|)?+(?:style|src|class)\s*+[\^$*]=)(?:[^\]=^$*\[]++|\*\|)*+[\^$*]=|unicode-range/i';
+    private const CSS_FORBIDDEN = '/\\\\|-moz-binding|(?<![a-z0-9-])(?:-ms-)?behavior\s*:|\[(?!\s*+(?:(?:\*|[a-z0-9_-]*+)\|)?+(?:style|src|class)\s*+[\^$*]=)(?:[^\]=^$*\[]++|\*\|)*+[\^$*]=|unicode-range/i';
+
+    // a CSS function name and its (, image-set( or --custom(, read with comments and strings removed. The lookbehind
+    // makes it a whole name, so in x-rotate( the name is x-rotate, and not an at-rule, so @media(...) is not media(.
+    // An unquoted url() is stepped over, since an ( inside it is part of the URL
+    private const CSS_FUNCTION = '/(?<![\w@-])url\([^)]*+(*SKIP)(*FAIL)|(?<![\w@-])(-{0,2}+[a-z_][\w-]*+)\(/i';
+
+    // a CSS at-rule name, @media or @import, read with comments and strings removed; an unquoted url() is stepped
+    // over, since url(https://user@host/) holds an @ that starts nothing
+    private const CSS_AT_RULE = '/(?<![\w@-])url\([^)]*+(*SKIP)(*FAIL)|@(-?+[a-z_][\w-]*+)/i';
 
     // a backslash inside a quoted url() argument: an escape there still spells a scheme, url("\6a avascript:")
     private const CSS_URL_ESCAPE = '/url\(\s*+["\'][^"\')\\\\]*+\\\\/i';
@@ -241,7 +273,7 @@ final class HtmlSecurityCheck
     /**
      * Returns the rule tables and the current switches, keyed by name: elements, formElements,
      * attributes, attributePrefixes, officeNamespaces, formAttributes, urlSchemes, scriptSchemes, cssUrlSchemes,
-     * urlAttributes, allowForms, allowStyleAttribute, allowStyleElement, allowEmbeds, iframeHosts. For documentation, debugging and settings pages.
+     * cssFunctions, cssAtRules, urlAttributes, allowForms, allowStyleAttribute, allowStyleElement, allowEmbeds, iframeHosts. For documentation, debugging and settings pages.
      *
      * @return array<string, mixed>
      */
@@ -257,6 +289,8 @@ final class HtmlSecurityCheck
             'urlSchemes'          => self::urlSchemes(),
             'scriptSchemes'       => self::SCRIPT_SCHEMES,
             'cssUrlSchemes'       => self::CSS_URL_SCHEMES,
+            'cssFunctions'        => self::CSS_FUNCTIONS,
+            'cssAtRules'          => self::CSS_AT_RULES,
             'urlAttributes'       => self::URL_ATTRIBUTES,
             'allowForms'          => self::$allowForms,
             'allowStyleAttribute' => self::$allowStyleAttribute,
@@ -583,14 +617,39 @@ final class HtmlSecurityCheck
         } elseif ($found === false) {
             $this->fail('css-not-allowed', self::excerpt($css));   // the PCRE limit (megabytes of x*| pairs inside one [): a block too big to check is refused, never passed
         }
-        if (preg_match(self::CSS_URL_ESCAPE, $css, $match)) {
-            $this->fail('css-not-allowed', self::excerpt($match[0]));
+        $this->checkCssNames($css, $code, self::CSS_FUNCTION, self::CSS_FUNCTIONS);
+        $this->checkCssNames($css, $code, self::CSS_AT_RULE, self::CSS_AT_RULES);
+        $found = preg_match(self::CSS_URL_ESCAPE, $css, $match);
+        if ($found !== 0) {   // false (a PCRE limit) refuses too
+            $this->fail('css-not-allowed', self::excerpt($match[0] ?? $css));
         }
-        preg_match_all(self::CSS_URL, $css, $matches);
+        if (preg_match_all(self::CSS_URL, $css, $matches) === false) {
+            $this->fail('css-not-allowed', self::excerpt($css));
+            return;
+        }
         foreach ($matches[1] as $url) {
             $scheme = self::scheme($url);
             if ($scheme !== null && !in_array($scheme, self::CSS_URL_SCHEMES, true)) {
                 $this->fail('css-not-allowed', self::excerpt("url($url)"));
+            }
+        }
+    }
+
+    /**
+     * Refuses every function or at-rule name in $code (the CSS with comments and strings removed)
+     * that is not in $allowed, with the name as written as the detail: image-set( or @import.
+     *
+     * @param string[] $allowed
+     */
+    private function checkCssNames(string $css, string $code, string $pattern, array $allowed): void
+    {
+        if (preg_match_all($pattern, $code, $matches) === false) {   // a PCRE limit was reached, so the names are unknown
+            $this->fail('css-not-allowed', self::excerpt($css));
+            return;
+        }
+        foreach ($matches[1] as $index => $name) {
+            if (!in_array(strtolower($name), $allowed, true)) {
+                $this->fail('css-not-allowed', self::excerpt($matches[0][$index]));
             }
         }
     }

@@ -433,6 +433,21 @@ first thing it bans is the backslash: with no escape syntax, every token reads a
 and there is no way to spell `url(` that a regex sees differently from a browser. Every
 `url()` gets the scheme check with only `http` and `https` allowed.
 
+Function names and at-rules became allowlists (settled 2026-10-13, as in SvgSecurityCheck):
+`CSS_FUNCTIONS` and `CSS_AT_RULES`. Outside resources load through functions (`image-set(`,
+`src(`, `cross-fade(`), so a banned list passed whatever browsers add next; an allowlist
+refuses it until it is listed. The lists were built from the corpus: Word pastes need
+`@font-face`, `@page` and `@list`, Wikipedia and the email templates need `@media`,
+`@supports`, gradients, filters and `:not()`, and the rest are the color, transform, shape and
+math functions that load nothing. No real-content file changed result; seven payloads that
+passed as known non-issues (Netscape's `<style type="text/javascript">`, IE6's fullwidth
+`ｅｘｐｒｅｓｓｉｏｎ(`) are now refused for the `alert(` or `write(` inside them. The banned
+list keeps what an allowlist of names cannot see: the backslash, `behavior:` and
+`-moz-binding` (properties whose value is an allowed `url()`), the substring selectors and
+`unicode-range`. Property names stay unchecked: every property that loads something today does
+it through `url()`, which has its own check. Not listed, for now: `attr()`, `env()`, `paint()`,
+`element()`, `@import`, `@layer`, `@container`, `@property`.
+
 Dropped (2026-10-08): SvgSecurityCheck's `@charset`. A browser reads it only at the start of a
 stylesheet loaded as its own file; in a `<style>` element or a `style` attribute the page's
 encoding wins and the rule is ignored. No current browser decodes UTF-7, the trick it was

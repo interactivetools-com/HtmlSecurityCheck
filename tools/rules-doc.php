@@ -37,8 +37,8 @@ function block(string $name, array|bool $value): string
         return '`' . ($value ? 'true' : 'false') . '`';
     }
     return match ($name) {
-        'elements', 'formElements', 'attributes' => "```text\n" . wrap($value) . "\n```",
-        default                                  => implode(', ', array_map(fn(string $item) => "`$item`", $value)),
+        'elements', 'formElements', 'attributes', 'cssFunctions' => "```text\n" . wrap($value) . "\n```",
+        default                                                  => implode(', ', array_map(fn(string $item) => "`$item`", $value)),
     };
 }
 

@@ -100,7 +100,7 @@ final class ResultTest extends HtmlSecurityCheckTestCase
     {
         $rules = HtmlSecurityCheck::rules();
         $this->assertSame(
-            ['elements', 'formElements', 'attributes', 'attributePrefixes', 'officeNamespaces', 'formAttributes', 'urlSchemes', 'scriptSchemes', 'cssUrlSchemes', 'urlAttributes', 'allowForms', 'allowStyleAttribute', 'allowStyleElement', 'allowEmbeds', 'iframeHosts'],
+            ['elements', 'formElements', 'attributes', 'attributePrefixes', 'officeNamespaces', 'formAttributes', 'urlSchemes', 'scriptSchemes', 'cssUrlSchemes', 'cssFunctions', 'cssAtRules', 'urlAttributes', 'allowForms', 'allowStyleAttribute', 'allowStyleElement', 'allowEmbeds', 'iframeHosts'],
             array_keys($rules),
         );
         $this->assertContains('p', $rules['elements']);
