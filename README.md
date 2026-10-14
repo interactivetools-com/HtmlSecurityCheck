@@ -81,8 +81,9 @@ HtmlSecurityCheck::$urlSchemes          = ['http', 'https', 'mailto', 'tel'];   
 
 Element names, attribute names, iframe hosts, the schemes on `href`, `src` and the other URL
 attributes, and CSS function names and at-rules must be on the check's allowlists, so anything
-it doesn't know is rejected. CSS `url()` must be `http:`, `https:` or a relative path, and a few
-patterns the lists can't catch (`\` escapes, `behavior:`, `[value^=`) are rejected on their own.
+it doesn't know is rejected. The one exception is a `data:image/` URL on `<img src>`, which
+passes. CSS `url()` must be `http:`, `https:` or a URL with no scheme, and a few patterns the
+lists can't catch (`\` escapes, `behavior:`, `[value^=`) are rejected on their own.
 
 ## What It Does Not Check
 
@@ -123,7 +124,7 @@ ever bypassed, and cover content the check never saw:
 Element names, attribute names, iframe hosts, URL schemes and CSS function names and at-rules
 are checked against allowlists, so anything browsers add later is rejected until it is added here.
 CSS property names are not checked, so a property browsers add later passes; every property that
-loads something today does it through `url()`, limited to `http:`, `https:` or a relative path. What the rules cannot anticipate is a browser changing how it handles something
+loads something today does it through `url()`, limited to `http:`, `https:` or a URL with no scheme. What the rules cannot anticipate is a browser changing how it handles something
 already allowed. Update when a new release comes out, and report HTML that gets through as described in
 [SECURITY.md](SECURITY.md).
 
