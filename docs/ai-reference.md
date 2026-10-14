@@ -221,11 +221,13 @@ them.
 ### Word and Email Pastes
 
 Pass: `class="MsoNormal"`, `mso-*` styles, `<o:p>`, `<v:shape>`, `xmlns:o` with an Office
-namespace, `<?xml:namespace ...>`, Word's `<!--[if gte mso 9]><xml>...</xml><![endif]-->`
-settings block, its `<style><!-- ... --></style>`, and
-`<!--[if mso]><table>...</table><![endif]-->`. Refused: a whole pasted page (`<html>`,
-`<head>`, `<body>`), images at `file:` or `blob:` URLs, which exist only on the editor's
-computer, and Word's `v\:* {behavior:url(#default#VML)}` rule for shapes.
+namespace, `<?xml:namespace ...>`, the `<xml>` element of Word's
+`<!--[if gte mso 9]><xml>...</xml><![endif]-->` settings block with its `o:` and `w:`
+settings, its `<style><!-- ... --></style>`, and `<!--[if mso]><table>...</table><![endif]-->`.
+Refused: a whole pasted page (`<html>`, `<head>`, `<body>`), images at `file:` or `blob:`
+URLs, which exist only on the editor's computer, the settings block's `<w:LatentStyles>`
+attributes and `<m:mathPr>` math settings, and Word's `v\:* {behavior:url(#default#VML)}`
+rule for shapes.
 
 ### Fixing a Rejection
 
