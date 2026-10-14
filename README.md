@@ -113,6 +113,14 @@ and a few more), allows `url()` only to `http:`, `https:` or a relative path, an
 - **Markup for Alpine, HTMX, Stimulus or web components.** `data-*` attributes and custom
   elements are rejected with no switch.
 
+## Security
+
+Element names, attribute names, iframe hosts and URL schemes are checked against lists, so
+anything browsers add later is rejected until it is added here. CSS is checked against a list of
+rejected patterns instead, so a CSS feature browsers add later passes unless it matches one.
+Update when a new release comes out, and report HTML that gets through as described in
+[SECURITY.md](SECURITY.md).
+
 ## Related Libraries
 
 - [SvgSecurityCheck](https://github.com/interactivetools-com/SvgSecurityCheck) - the same check for uploaded SVG files: reject, never rewrite.
