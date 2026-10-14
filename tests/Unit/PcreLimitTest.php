@@ -43,9 +43,10 @@ class PcreLimitTest extends HtmlSecurityCheckTestCase
     public static function guardProvider(): array
     {
         return [
-            'function names' => ['pcre.backtrack_limit', '2', 'width: ' . str_repeat('a', 50) . '(1)'],
-            'at-rule names'  => ['pcre.backtrack_limit', '2', '@media x'],
-            'url() targets'  => ['pcre.recursion_limit', '3', "background: url('aaaaaaaa')"],
+            'comment removal' => ['pcre.backtrack_limit', '20', '[title/*' . str_repeat('*x', 10) . '*/^=a]'],   // the comment would hide [title^= from the scan
+            'function names'  => ['pcre.backtrack_limit', '2', 'width: ' . str_repeat('a', 50) . '(1)'],
+            'at-rule names'   => ['pcre.backtrack_limit', '2', '@media x'],
+            'url() targets'   => ['pcre.recursion_limit', '3', "background: url('aaaaaaaa')"],
         ];
     }
 

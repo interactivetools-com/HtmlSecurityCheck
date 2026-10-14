@@ -211,11 +211,10 @@ after them, newline included, so `"\a` and a newline do not end the string. An u
 is part of the URL, not the start of a comment or string. So a backslash in a comment
 banner, `content: '\a0'` and a font name like `'\@Yu Mincho'` pass, and `content: '/*'`
 cannot hide what follows it. A comment is dropped without leaving a space, as a browser
-drops it, so `[value/**/^=` still rejects and reports `[value^=`. Past the PCRE backtrack
-limit (megabytes inside one comment or string) removal is skipped and the text is checked
-as written, which is stricter. A block any of the three scans cannot finish within a PCRE
-limit (megabytes of `x*|` pairs inside one `[` reach it) rejects with `css-not-allowed` and
-its first 80 characters as the detail; it is never passed unchecked.
+drops it, so `[value/**/^=` still rejects and reports `[value^=`. A block that removal or
+any of the three scans cannot finish within a PCRE limit (megabytes inside one comment or
+string, or of `x*|` pairs inside one `[`) rejects with `css-not-allowed` and its first 80
+characters as the detail; it is never passed unchecked.
 
 ## Rules: Text That Is Not Markup
 

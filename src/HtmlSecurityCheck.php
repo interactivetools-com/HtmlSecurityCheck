@@ -636,8 +636,13 @@ final class HtmlSecurityCheck
     {
         // comments and strings are removed, not blanked to a space: the CSS tokenizer drops a comment without leaving
         // whitespace, so [*/**/|x^=a] reads [*|x^=a] to a browser, and joining the text around a string can only add a
-        // match. Past the PCRE limits (megabytes inside one comment or string) the text is checked as written, which is stricter
-        $code  = preg_replace(self::CSS_COMMENT_OR_STRING, '', $css) ?? $css;
+        // match. Past a PCRE limit (megabytes inside one comment or string) the comments are still in the text and could
+        // split a selector the scans below look for, so the block is refused
+        $code = preg_replace(self::CSS_COMMENT_OR_STRING, '', $css);
+        if ($code === null) {
+            $this->fail('css-not-allowed', self::excerpt($css));
+            return;
+        }
         $found = preg_match(self::CSS_FORBIDDEN, $code, $match);
         if ($found === 1) {
             $this->fail('css-not-allowed', self::excerpt($match[0]));

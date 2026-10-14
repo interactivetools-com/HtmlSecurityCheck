@@ -211,14 +211,14 @@ final class CssTest extends HtmlSecurityCheckTestCase
     }
 
     /**
-     * A block past the PCRE limits is still checked: removal gives up and the text is checked as
-     * written, which is stricter, and the token scan takes a megabyte of letters after a [ in one
-     * step, so it never reaches the limit there
+     * A block past the PCRE limits is never passed unchecked: a block where comment removal
+     * can't finish is refused, since the comments left in could split a selector, and the token
+     * scan takes a megabyte of letters after a [ in one step, so it never reaches the limit there
      */
     public function testMegabyteBlocksAreStillChecked(): void
     {
         $stars = str_repeat('* ', 1024 * 1024);
-        $this->assertAccepts("<style>/* $stars */ p { color: red }</style>");
+        $this->assertRejects("<style>/* $stars */ p { color: red }</style>", 'css-not-allowed');
         $escapes = str_repeat('\\a', 1024 * 1024 + 512 * 1024);
         $this->assertRejects("<style>p { content: '$escapes'; width: expression(1) }</style>", 'css-not-allowed');
         $padding = str_repeat('a', 1024 * 1024 + 512 * 1024);
