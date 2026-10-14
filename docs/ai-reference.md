@@ -208,7 +208,8 @@ them.
   else passes: `position: fixed`, `mso-*`, `@media`, `@font-face`.
 - **Parser differences.** Invalid UTF-8 or a control character other than tab, LF and CR is
   the only error reported. A `<` inside `<style>`, `<iframe>`, `<textarea>` or a comment that
-  is not `<!-- -->` (`<?php ?>`, `<!x>`) is `less-than-in-text`. A tag, quoted value,
+  is not `<!-- -->` (`<?php ?>`, `<!x>`) is `less-than-in-text`; a `<!--` inside `<style>`
+  passes when its `-->` is in the same block. A tag, quoted value,
   comment or `<style>` left open at the end is `unclosed-markup`, always the last error.
 - **Not checked.** End tags, text and comments, except the markup inside a
   `<!--[if ...]> ... <![endif]-->` conditional comment, which gets the same rules as the rest.
@@ -217,9 +218,10 @@ them.
 
 Pass: `class="MsoNormal"`, `mso-*` styles, `<o:p>`, `<v:shape>`, `xmlns:o` with an Office
 namespace, `<?xml:namespace ...>`, Word's `<!--[if gte mso 9]><xml>...</xml><![endif]-->`
-settings block, and `<!--[if mso]><table>...</table><![endif]-->`. Refused: a whole pasted
-page (`<html>`, `<head>`, `<body>`), Word's `<style><!-- ... --></style>` (a `<` inside
-`<style>`), and images at `file:` or `blob:` URLs, which exist only on the editor's computer.
+settings block, its `<style><!-- ... --></style>`, and
+`<!--[if mso]><table>...</table><![endif]-->`. Refused: a whole pasted page (`<html>`,
+`<head>`, `<body>`), images at `file:` or `blob:` URLs, which exist only on the editor's
+computer, and Word's `v\:* {behavior:url(#default#VML)}` rule for shapes.
 
 ### Fixing a Rejection
 

@@ -35,7 +35,8 @@ rejects anything that could run script in the page it is printed into, with a `R
 - **A `<` inside raw text is refused** (`less-than-in-text`): the content of `<style>`, `<iframe>`
   and `<textarea>`, and comments that are not `<!-- -->`, are text to a browser but tags to
   `strip_tags()` with an allow list or an HTML4-era parser, so a fragment that passed the check
-  stays safe through them.
+  stays safe through them. A `<!--` inside `<style>` passes when its `-->` is in
+  the same block, for Word's `<style><!-- ... --></style>`.
 - **Old IE's markup**: the markup inside a `<!--[if ...]>` conditional comment gets the same
   rules as the rest, for the IE engine inside old Windows programs and Outlook's Word engine,
   so email templates' `<!--[if mso]>` tables pass and a script inside one rejects.

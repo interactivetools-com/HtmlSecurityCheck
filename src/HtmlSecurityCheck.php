@@ -328,7 +328,7 @@ final class HtmlSecurityCheck
             }
             if ($token->type === Token::TEXT) {
                 if ($rawText !== '') {
-                    $this->checkNoLessThan($token->start, $token->end);
+                    $this->checkNoLessThan($token->start, $token->end, allowStyleComment: $rawText === 'style');
                     if ($rawText === 'style') {
                         $this->checkCss($token->data);
                     }
@@ -360,11 +360,26 @@ final class HtmlSecurityCheck
     /**
      * Text a browser never reads as markup (raw-text content, a comment that is not <!-- -->) is markup to a
      * parser without those rules: strip_tags() with an allow list, or an HTML4-era DOM. So a < is refused there.
-     * The bytes as written are checked, so &lt; in a textarea passes
+     * The bytes as written are checked, so &lt; in a textarea passes.
+     *
+     * In <style>, a <!-- whose --> is in the same block passes: Word wraps its stylesheet in
+     * <style><!-- ... --></style>. strip_tags() reads it as a comment to the first -->, so that has to be
+     * inside the block too: a --> later in an attribute value would end the comment there and leave the
+     * rest of the value as a live tag. Any other < in the block is still refused.
      */
-    private function checkNoLessThan(int $from, int $end): void
+    private function checkNoLessThan(int $from, int $end, bool $allowStyleComment = false): void
     {
         $lessThan = strpos($this->html, '<', $from);
+        $close    = -1;
+        while ($allowStyleComment && $lessThan !== false && substr($this->html, $lessThan, 4) === '<!--') {
+            if ($close < $lessThan + 2) {   // the next --> serves every <!-- before it, so each search starts past the last
+                $close = strpos($this->html, '-->', $lessThan + 2);   // where strip_tags() ends it: <!--> closes at once
+            }
+            if ($close === false || $close + 3 > $end) {
+                break;
+            }
+            $lessThan = strpos($this->html, '<', $lessThan + 4);
+        }
         if ($lessThan !== false && $lessThan < $end) {
             $this->fail('less-than-in-text', self::excerpt(substr($this->html, $lessThan, $end - $lessThan)));
         }

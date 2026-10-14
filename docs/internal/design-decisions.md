@@ -409,6 +409,17 @@ The rule also covers `<select>` with `$allowForms` on. A tree builder on the pre
 content after it is markup to that browser: `<select><style><img onerror=...></style>` runs
 there. The `<` in that content is refused first, so the old parsing never matters.
 
+One exception (settled 2026-10-13): in `<style>`, a `<!--` whose first `-->` is in the same
+block passes. Word wraps its stylesheet in `<style><!-- ... --></style>`, and that alone
+refused nearly every raw Word paste in the CKEditor paste captures; with it, 37 of 87 pass,
+and the rest are refused for `file:` and `blob:` images, whole pages and the VML
+`behavior:` rule. `strip_tags()` reads `<!--` as a comment to the first `-->`, so the `-->`
+must be inside the block: `<style><!--</style><img alt="--><img src=x onerror=alert(1)>">`
+would end that comment inside the `alt` value and keep the second `<img>` as a live tag. A
+fuzz of 300,000 piece combinations (6,323 that pass) through `strip_tags()` with three allow
+lists and `DOMDocument` found no live handler. `<textarea>`, `<iframe>` and bogus comments
+keep the plain rule.
+
 Rejected: allowing `<xmp>` for code samples. It is raw text like `<style>`, so with this rule
 it could hold nothing a `<pre>` cannot, and without the rule its content is exactly the
 `strip_tags()` case above. `<xmp>` with encoded content does not work either: raw text is

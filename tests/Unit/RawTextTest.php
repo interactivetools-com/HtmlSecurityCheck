@@ -41,6 +41,12 @@ final class RawTextTest extends HtmlSecurityCheckTestCase
             // a parser on the pre-2025 spec (Chrome before 135) drops a style or iframe start tag inside select and reads on as markup
             'style inside a select'   => ["<select><style>$img</style></select>", $img],
             'iframe inside a select'  => ["<select><iframe src=\"https://www.youtube.com/embed/x\">$img</iframe></select>", $img],
+            'tag after <!-- in style' => ["<style><!-- p{color:red} $img --></style>", "$img -->"],
+            '<!-- in a textarea'      => ['<textarea><!-- x --></textarea>', '<!-- x -->'],   // only style gets the exception
+            '<!x in style'            => ['<style><!x></style>', '<!x>'],
+            // strip_tags() would end the comment inside the alt value and keep the second img as a tag
+            '<!-- closed outside'     => ['<style><!--</style><img alt="--><img src=x onerror=alert(1)>">', '<!--'],
+            '<!-- never closed'       => ['<style>p{} <!--</style>', '<!--'],
         ];
     }
 
@@ -55,6 +61,9 @@ final class RawTextTest extends HtmlSecurityCheckTestCase
         return [
             'encoded in a textarea'    => ['<textarea>&lt;b&gt; and &#60;</textarea>'],
             'child selector in css'    => ['<style>ul > li {color: red}</style>'],
+            'word comment in style'    => ["<style><!--\n/* Font Definitions */\np.MsoNormal {margin: 0}\n--></style><p class=\"MsoNormal\">x</p>"],
+            'two comment openers'      => ['<style><!-- a{} --> <!-- b{} --></style>'],
+            'empty <!--> in style'     => ['<style><!--> p{}</style>'],
             'iframe fallback text'     => ['<iframe src="https://www.youtube.com/embed/x">Your browser has no frames</iframe>'],
             'word namespace comment'   => ['<?xml:namespace prefix = o ns = "urn:schemas-microsoft-com:office:office" /><p>x</p>'],
             'php block'                => ['<?php echo 1; ?>'],

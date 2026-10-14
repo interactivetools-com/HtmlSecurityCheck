@@ -1,7 +1,4 @@
-<!-- rejected: the old comment-hiding hack inside <style> is text to a browser, but strip_tags() with an allow list reads it as a tag -->
-<style>
-<!--
-p { color: red }
--->
-</style>
+<!-- rejected: the <!-- in <style> closes outside the block, so strip_tags() with an allow list ends its comment inside the alt value and keeps the second img as a live tag -->
+<style><!--</style>
+<img alt="--><img src=x onerror=alert(1)>">
 <p>Sale ends Friday</p>

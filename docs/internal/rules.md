@@ -214,6 +214,15 @@ text to a browser. A `<` inside any of them reports `less-than-in-text`, with th
 that `<` to the end of the block as the detail. The bytes as written are checked, so `&lt;`
 in a `<textarea>` passes, and so does `<?xml:namespace prefix = o />` from a Word paste.
 
+Inside `<style>`, a `<!--` passes when the first `-->` after it is in the same block: Word
+wraps its stylesheet in `<style><!-- ... --></style>`. `strip_tags()` reads `<!--` as a
+comment that runs to the first `-->`, so a `-->` outside the block would end that comment
+somewhere the check saw markup: `<style><!--</style><img alt="--><img src=x onerror=alert(1)>">`
+comes out of `strip_tags($html, '<img>')` as a live `<img onerror>`, and reports `<!--`.
+Every other `<` in the block is still refused, so
+`<style><!-- <img src=x onerror=alert(1)> --></style>` reports the `<img`. The exception is
+for `<style>` only; `<textarea><!-- x --></textarea>` reports.
+
 A conditional comment, `<!--[if mso]> ... <![endif]-->`, is a comment to every browser since
 IE 10, but the IE engine inside old Windows programs and Outlook's Word engine read the
 markup inside it. That markup gets the same rules as the content around it, from the first
