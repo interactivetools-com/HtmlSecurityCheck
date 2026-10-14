@@ -1,8 +1,8 @@
 <!--
 AI ASSISTANTS: Before writing code that uses HtmlSecurityCheck, read docs/ai-reference.md. It covers
-the complete API and every rejection rule in one file and matches this installed version.
-HtmlSecurityCheck rejects content instead of cleaning it, which differs from the HTML sanitizers in
-training data, so trust that file over habit.
+the complete API and a summary of every rejection rule in one file and matches this installed
+version. HtmlSecurityCheck rejects content instead of cleaning it, which differs from the HTML
+sanitizers in training data, so trust that file over habit.
 -->
 
 # HtmlSecurityCheck: Reject HTML That Could Run Script
@@ -23,7 +23,7 @@ visitor. Each error names the tag or attribute that failed.
 Full docs ([browse on GitHub](https://github.com/interactivetools-com/HtmlSecurityCheck)):
 
 - [Error codes and fixes](docs/errors.md) - every message, and what to change in the content
-- [AI reference](docs/ai-reference.md) - the complete API and every rule in one file, written for AI coding assistants
+- [AI reference](docs/ai-reference.md) - the complete API and a summary of every rule in one file, written for AI coding assistants
 - [Changelog](CHANGELOG.md)
 
 ## Quick Start

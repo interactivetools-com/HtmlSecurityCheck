@@ -1,8 +1,8 @@
 # HtmlSecurityCheck AI Reference
 
-This is a consolidated reference for AI coding assistants: the complete API and every
-rejection rule in one file, covering HtmlSecurityCheck 1.0. For human-friendly docs, see the
-[README](https://github.com/interactivetools-com/HtmlSecurityCheck).
+This is a consolidated reference for AI coding assistants: the complete API and a summary of
+every rejection rule in one file, covering HtmlSecurityCheck 1.0. For human-friendly docs, see
+the [README](https://github.com/interactivetools-com/HtmlSecurityCheck).
 
 Contents:
 
