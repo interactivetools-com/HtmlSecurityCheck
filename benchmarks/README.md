@@ -3,7 +3,7 @@
 `check-speed.php` times `HtmlSecurityCheck::check()` on generated content of known sizes, on
 typical pages the way an editor writes them, on a set of hostile inputs built to cost a
 tokenizer time, and on the real files in `corpus/` and `tests/Support/fixtures/`. `results.md`
-is the raw output of one run.
+is the raw output of one run on PHP 8.5 and one on PHP 8.1.
 
 Run it through `run.sh`, which turns opcache on and xdebug off and caps the memory and
 process count of everything it starts:
@@ -29,14 +29,14 @@ bytes. Check time is the check as shipped; Fast path off is the same check with
 `HtmlSecurityCheck::$fastPath = false`, every byte through the tokenizer, so the fast path's
 share of the time is visible.
 
-**Typical pages** are whole pages as a WYSIWYG editor writes them, at the word counts pages
-usually have: a news item of 250 words, a home page section built from divs and buttons, a
+**Typical pages** are generated too (random words, a fixed seed), in the shape of whole pages
+as a WYSIWYG editor writes them, at the word counts pages usually have: a news item of 250 words, a home page section built from divs and buttons, a
 blog post of 1,000 words and an article of 1,800 (SEO guidance puts a ranking article at
 1,000 to 2,000), an FAQ of 40 questions, a policy page of 5,000 words, and a newsletter
 pasted from an email builder, which is the densest markup an editor field usually holds. The
 table gives each page's size and tags per KB next to its time, so a reader can place their
 own content between the rows. The generated table above says how the cost scales; this one
-says what a page costs.
+says what a page costs. Real pages are in the corpus tables below.
 
 **Hostile inputs** are built to cost a tokenizer time or memory: a long run of `<`, an
 attribute value that never closes, thousands of attributes on one tag, very deep nesting, a
@@ -63,7 +63,7 @@ repository. It is LGPL licensed: timing it for a comparison on your own machine 
 the license allows, but it is never a dependency here and none of its code ships with this
 MIT library. Point `--sanitizer` at that install's `vendor/autoload.php`.
 
-The columns appear on the generated content table only. HTMLPurifier rewrites content
+The columns appear on the generated content and typical pages tables only. HTMLPurifier rewrites content
 rather than accepting or refusing it, so on the hostile inputs the two tools would not be
 doing the same job. The purifier is built once outside the timed call, the way an
 application would hold one, and its definition cache is left at the default location inside

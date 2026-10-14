@@ -36,7 +36,8 @@ $result->ok;       // true when the content passed
 $result->errors;   // Violation[] - empty when ok, otherwise one per distinct problem
 ```
 
-Requirements: PHP 8.1+. No extensions, no dependencies.
+Install with `composer require itools/htmlsecuritycheck`. Requirements: PHP 8.1+. No extensions,
+no dependencies.
 
 ## API
 
@@ -60,13 +61,13 @@ array changes nothing.
 Public static properties, read by every `check()` call. Set them once at startup.
 
 ```php
-HtmlSecurityCheck::$allowForms          = false;   // form elements (FORM_ELEMENTS) and formaction pass
+HtmlSecurityCheck::$allowForms          = false;   // true lets form elements (FORM_ELEMENTS) and formaction pass
 HtmlSecurityCheck::$allowStyleAttribute = true;    // the style attribute passes, after the CSS check; it styles its own element only
 HtmlSecurityCheck::$allowStyleElement   = true;    // the <style> element passes, after the CSS check; its rules can style anything on the page
 HtmlSecurityCheck::$allowEmbeds         = true;    // <iframe> passes when its src host is in $iframeHosts
 HtmlSecurityCheck::$iframeHosts         = ['www.youtube.com', 'www.youtube-nocookie.com', 'player.vimeo.com', 'www.google.com'];
 HtmlSecurityCheck::$urlSchemes          = ['http', 'https', 'mailto', 'tel'];   // schemes a URL attribute may start with
-HtmlSecurityCheck::$maxErrors       = 50;   // distinct errors reported per check
+HtmlSecurityCheck::$maxErrors       = 50;   // distinct errors reported per check; below 1 counts as 1
 HtmlSecurityCheck::$maxDetailLength = 80;   // characters of content quoted in a detail before "..."
 HtmlSecurityCheck::$fastPath        = true; // text and tags the rules can never refuse are stepped over in one regex match; false sends every byte through the tokenizer, same result, slower
 ```
@@ -171,7 +172,7 @@ Every code, its template, and what `detail` holds. Templates are `Violation::TEM
 | `unclosed-markup`        | `%s is not closed`                                                                              | the unfinished markup from where it opened to the end of the content (`<img src="//evil.example/?`, `<!-- hidden`, `<style>p { }`)                        |
 | `not-checked`            | `Content could not be checked: %s`                                                              | PHP's own message (`Backtrack limit exhausted`, `Recursion limit exhausted`): a regex stopped at a PCRE limit set far below PHP's default                 |
 
-Details longer than 80 characters are cut at 80 and end with `...`. Newlines and other
+Details longer than `$maxDetailLength` (80) characters are cut there and end with `...`. Newlines and other
 control characters inside a detail are escaped (`\n`), so a detail is always one line.
 
 ## What Is Refused
@@ -357,8 +358,8 @@ lang dir
 
 ## Limits
 
-Public static properties, set before the check. The rules themselves have three switches and
-a host list, see [Switches](#switches).
+Public static properties, set before the check. The switches and lists that change the rules
+are under [Switches](#switches).
 
 | Limit                          | Value         | Source              |
 |--------------------------------|---------------|---------------------|
@@ -374,12 +375,13 @@ form or the API before the check.
 ## Constraints and Gotchas
 
 - **No cleaned output.** The result is accept or reject. Store the original string or refuse.
-- **No line numbers.** `Violation` has `code` and `detail` only. The detail quotes the tag or
+- **No line numbers.** A `Violation` holds no position. The detail quotes the tag or
   attribute, which is enough to find it in a field.
 - **Same problem once.** Five `<script>` tags report one error; five different `on*`
   attributes report five; two `<script>` tags with different attributes report two, since the
   detail is the whole tag.
-- **50 errors and the check stops.** Nothing past the fiftieth distinct problem is reported.
+- **`$maxErrors` (50) errors and the check stops.** Nothing past that many distinct problems
+  is reported.
 - **A byte error arrives alone.** `not-utf8` and `control-character` stop the check before
   tokenizing.
 - **`detail` and `message` are unencoded text from the content.** Always one line of valid

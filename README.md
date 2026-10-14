@@ -13,9 +13,10 @@ visitor. Each error names the tag or attribute that failed.
 
 - **It never rewrites the content.** What passes is stored and shown byte for byte as submitted.
 - **It reads HTML the way a browser does.** Its HTML5 tokenizer is tested against html5lib's
-  tests, and CI fails if headless Chrome finds script in anything the check accepts.
-- **A typical page checks in under 0.04 ms,** 50 to 115 times less than HTMLPurifier takes
-  on the same pages ([benchmarks](benchmarks/results.md)).
+  tests, and CI fails if headless Chrome finds script in any test input the check accepts.
+- **A typical page checks in under 0.04 ms,** about 50 to 115 times faster than HTMLPurifier
+  on the same pages, and every real page under 100 KB we measured checks in under 1 ms
+  ([benchmarks](benchmarks/results.md)).
 
 ## Documentation
 
@@ -49,7 +50,8 @@ if (!$result->ok) {
 echo HtmlSecurityCheck::check($body)->ok ? $body : '<p>This content is hidden until its HTML is fixed.</p>';
 ```
 
-The rest of the API. The switches are static properties; set them once at startup:
+More of the API (the [AI reference](docs/ai-reference.md) has all of it). The switches are static
+properties, shown with their defaults; set them once at startup:
 
 ```php
 $violation->code;              // 'event-handler', stable across releases, so switch on it
@@ -102,7 +104,8 @@ Content that passes is safe to print without these. They add a second layer in c
 ever bypassed, and cover content the check never saw:
 
 - **A Content Security Policy on pages that show it.** `script-src 'self'; object-src 'none';
-  base-uri 'none'` runs your own script files and nothing else; give inline scripts a nonce.
+  base-uri 'none'` runs your own script files and nothing else. To keep an inline script, add
+  `'nonce-...'` to `script-src` and the same nonce to the tag.
 - **Turn script off in the editor.** Content saved before the check existed opens there
   unchecked. Give the editor's frame the policy `script-src 'none'; object-src 'none'`
   (TinyMCE's `content_security_policy` option; iframe mode only).
@@ -115,7 +118,8 @@ ever bypassed, and cover content the check never saw:
 - **Visitor posts.** A rejection works for staff who can fix the HTML, not for a visitor who
   can't. Forum posts and comments need a sanitizer such as [HTMLPurifier](https://htmlpurifier.org/).
 - **Inline SVG or MathML.** Both are rejected with no switch. Upload SVG as a file, check it with
-  SvgSecurityCheck, and show it with `<img src>`.
+  [SvgSecurityCheck](https://github.com/interactivetools-com/SvgSecurityCheck), and show it with
+  `<img src>`.
 - **Markup for Alpine, HTMX, Stimulus or web components.** `data-*` attributes and custom
   elements are rejected with no switch.
 
