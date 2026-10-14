@@ -240,7 +240,9 @@ markup inside it. That markup gets the same rules as the content around it, from
 `]>` to `<![endif]`, or to the end of the comment when there is none: an email template's
 `<!--[if mso]><table>...</table><![endif]-->` passes, and
 `<!--[if IE]><script>alert(1)</script><![endif]-->` reports `element-not-allowed` with
-`<script>`. Ordinary text and everything else inside `<!-- -->` are never checked.
+`<script>`. A `<!--[if` inside one never closes, since the outer comment ends at the first
+`-->`, so it reports `unclosed-markup` once and the markup inside it is not read again.
+Ordinary text and everything else inside `<!-- -->` are never checked.
 
 The reason is what happens after the check: `strip_tags()` with an allow list and HTML4-era
 DOM parsers read a tag inside these as live. Content that passed the check stays safe

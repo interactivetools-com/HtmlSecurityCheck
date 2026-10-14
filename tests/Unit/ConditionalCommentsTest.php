@@ -63,4 +63,17 @@ final class ConditionalCommentsTest extends HtmlSecurityCheckTestCase
             $this->assertCount(2, $result->errors);
         });
     }
+
+    /**
+     * A <!--[if inside a conditional comment never closes, since the outer comment ends at the first -->, so it
+     * reports once as unclosed-markup and its own inner markup is not read again. Read again at every level,
+     * each level held a copy of the rest of the content (42 KB of nesting took 208 MB and 257 ms)
+     */
+    public function testNestedConditionalCommentsStayLinear(): void
+    {
+        $this->assertRejects('<!--[if mso]><b>A</b><!--[if gte mso 9]><i>B</i><![endif]--><u>C</u><![endif]-->', 'unclosed-markup', '<!--[if gte mso 9]><i>B</i>');
+
+        $result = HtmlSecurityCheck::check(str_repeat('<!--[if x]>', 10000) . '<![endif]-->');
+        $this->assertSame(['unclosed-markup'], array_column($result->errors, 'code'));
+    }
 }

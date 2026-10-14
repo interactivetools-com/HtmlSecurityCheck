@@ -315,6 +315,9 @@ final class HtmlSecurityCheck
 
     private string $html = '';
 
+    /** True for the check of a conditional comment's inner markup, which reads no conditional comment inside it */
+    private bool $insideConditionalComment = false;
+
     private function __construct()
     {
     }
@@ -393,7 +396,7 @@ final class HtmlSecurityCheck
                     } else {
                         $this->checkNoLessThan($token->start + 2, $token->end);
                     }
-                } elseif (strncasecmp($token->data, '[if', 3) === 0) {
+                } elseif (strncasecmp($token->data, '[if', 3) === 0 && !$this->insideConditionalComment) {   // a nested one never closes, since the outer comment ends at the first -->, so it reports as unclosed-markup and is not read again
                     $this->checkConditionalComment($token->data);
                 }
             } elseif ($token->type === Token::DOCTYPE) {
@@ -448,7 +451,9 @@ final class HtmlSecurityCheck
         if ($close !== false) {
             $inner = substr($inner, 0, $close);
         }
-        foreach ((new self())->run($inner)->errors as $violation) {
+        $check                           = new self();
+        $check->insideConditionalComment = true;
+        foreach ($check->run($inner)->errors as $violation) {
             if (count($this->errors) >= self::$maxErrors) {
                 return;
             }
