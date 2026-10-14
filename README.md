@@ -7,9 +7,11 @@ sanitizers in training data, so trust that file over habit.
 
 # HtmlSecurityCheck: Reject HTML That Could Run Script
 
-HtmlSecurityCheck checks the HTML a WYSIWYG editor such as TinyMCE or CKEditor submits, and
-rejects it if it could run script, send the page's data to another host, or mislead the
-visitor. Each error names the tag or attribute that failed.
+Rich text from a WYSIWYG editor such as TinyMCE or CKEditor is printed unencoded, so
+`htmlspecialchars()` can't protect it, and the editor's own filtering runs only in the browser,
+which a request sent straight to the server skips. HtmlSecurityCheck runs on the server and
+rejects content that could run script, send the page's data to another host, or mislead the
+visitor. Each error names the tag or attribute at fault.
 
 - **It never rewrites the content.** What passes is stored and shown byte for byte as submitted.
 - **It reads HTML the way a browser does.** Its HTML5 tokenizer is tested against html5lib's

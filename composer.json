@@ -1,7 +1,7 @@
 {
     "name": "itools/htmlsecuritycheck",
-    "description": "Rejects rich-text HTML that could run script: runs the HTML5 tokenizer browsers use, reports every problem with the tag or attribute at fault, never rewrites the content",
-    "keywords": ["php", "html", "html5", "wysiwyg", "rich-text", "tinymce", "ckeditor", "allowlist", "validation", "security", "xss", "html-sanitizer", "sanitize", "tokenizer"],
+    "description": "Allowlist check for HTML that has to be printed unencoded, such as rich text from a WYSIWYG editor: rejects content that could run script, send the page's data to another host, or mislead the visitor, and never rewrites what it accepts",
+    "keywords": ["php", "html", "html5", "security", "xss", "stored-xss", "xss-protection", "html-security", "css-injection", "wysiwyg", "rich-text", "tinymce", "ckeditor", "allowlist", "tokenizer", "html5lib", "html-sanitizer", "htmlpurifier"],
     "type": "library",
     "homepage": "https://github.com/interactivetools-com/HtmlSecurityCheck",
     "license": "MIT",
