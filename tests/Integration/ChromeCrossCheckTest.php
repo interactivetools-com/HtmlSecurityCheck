@@ -3,8 +3,11 @@ declare(strict_types=1);
 
 namespace Itools\HtmlSecurityCheck\Tests\Integration;
 
+use FilesystemIterator;
 use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
 use Itools\HtmlSecurityCheck\Tests\Support\HtmlSecurityCheckTestCase;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 
 /**
  * A second opinion from a real browser: every fragment the check accepts is parsed by Chrome, and
@@ -18,14 +21,21 @@ use Itools\HtmlSecurityCheck\Tests\Support\HtmlSecurityCheckTestCase;
  * findings back. A DOMParser document has scripting off, so <noscript> content is parsed as markup,
  * and the walk enters <template> content: neither hides anything from it.
  *
- * Chrome is found through CHROME_PATH, the usual names on PATH, or the install locations. Without
- * it the test fails in CI, where every runner but Linux on ARM has Chrome, and skips elsewhere.
+ * Three reject fixtures go through the same page as canaries, one for each thing the page looks
+ * for, and each must be flagged, so a page that stopped finding anything fails too.
+ *
+ * Chrome is found through CHROME_PATH, the usual names on PATH, or the install locations. In CI
+ * the test runs on the Linux jobs only, and fails there without Chrome except on ARM, where Google
+ * ships none. Elsewhere it skips when Chrome is missing.
  */
 final class ChromeCrossCheckTest extends HtmlSecurityCheckTestCase
 {
     private const FIXTURES = __DIR__ . '/../Support/fixtures';
     private const CORPUS   = __DIR__ . '/../../corpus';
     private const HARNESS  = __DIR__ . '/../Support/chrome-cross-check.html';
+
+    // a <script>, an on* attribute and a javascript: URL behind an entity: one reject fixture per finding the page reports
+    private const CANARIES = ['element-not-allowed-1.html', 'event-handler-1.html', 'url-scheme-not-allowed-1.html'];
 
     private const CHROME_NAMES = ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser'];
 
@@ -40,6 +50,9 @@ final class ChromeCrossCheckTest extends HtmlSecurityCheckTestCase
 
     public function testChromeFindsNoScriptInAcceptedContent(): void
     {
+        if (getenv('CI') && PHP_OS_FAMILY !== 'Linux') {
+            $this->markTestSkipped('runs on the Linux CI jobs only: Chrome parses the same on every platform');
+        }
         $chrome = self::chrome();
         if ($chrome === null) {
             $message           = 'Chrome not found: install it or set CHROME_PATH to run the browser cross-check';
@@ -49,22 +62,50 @@ final class ChromeCrossCheckTest extends HtmlSecurityCheckTestCase
             }
             $this->markTestSkipped($message);
         }
-        $cases = self::acceptedContent();
-        $this->assertGreaterThan(1000, count($cases));
+        $accepted = self::acceptedContent();
+        $this->assertGreaterThan(1000, count($accepted));
+        $canaries = [];
+        foreach (self::CANARIES as $file) {
+            $canaries["canary $file"] = file_get_contents(self::FIXTURES . "/reject/$file");
+        }
+        $result = $this->runInChrome($chrome, $accepted + $canaries);
 
-        $page = sys_get_temp_dir() . '/hv-cross-check-' . bin2hex(random_bytes(4)) . '.html';
+        $this->assertSame(count($accepted) + count($canaries), $result['checked']);
+        $flagged = [];
+        foreach ($result['found'] as $finding) {
+            $flagged[strstr($finding, ': ', true)][] = $finding;   // each finding is "case name: what was found"
+        }
+        $this->assertSame([], array_keys(array_diff_key($canaries, $flagged)), 'the page no longer flags these known payloads');
+        $this->assertSame([], array_diff_key($flagged, $canaries), 'Chrome found script in content the check accepted');
+    }
+
+    /**
+     * Run the harness page on the cases in one headless Chrome, with a fresh profile so it never
+     * attaches to a browser that is already open
+     *
+     * @param array<string, string> $cases
+     * @return array{checked: int, found: string[]}
+     */
+    private function runInChrome(string $chrome, array $cases): array
+    {
+        $dir = sys_get_temp_dir() . '/htmlcheck-chrome-' . bin2hex(random_bytes(4));
+        mkdir($dir);
+        $page = "$dir/cross-check.html";
         file_put_contents($page, str_replace('__CASES__', self::json($cases), file_get_contents(self::HARNESS)));
         try {
-            [$dom, , $exit] = $this->runCommand([$chrome, '--headless', '--disable-gpu', '--no-sandbox', '--dump-dom', self::pathForChrome($chrome, $page)]);
+            [$dom, , $exit] = $this->runCommand([
+                $chrome, '--headless', '--disable-gpu', '--no-sandbox', '--no-first-run',
+                '--user-data-dir=' . self::pathForChrome($chrome, "$dir/profile"),
+                '--dump-dom', self::pathForChrome($chrome, $page),
+            ]);
         } finally {
-            unlink($page);
+            self::removeDir($dir);
         }
         $this->assertSame(0, $exit, 'Chrome did not exit cleanly');
         $this->assertSame(1, preg_match('~<pre id="out">([^<]*)</pre>~', $dom, $match), 'no result in the dumped DOM');
         $result = json_decode(html_entity_decode($match[1], ENT_QUOTES | ENT_HTML5), true);
         $this->assertIsArray($result, 'the harness page did not run: ' . $match[1]);
-        $this->assertSame(count($cases), $result['checked']);
-        $this->assertSame([], $result['found'], 'Chrome found script in content the check accepted');
+        return $result;
     }
 
     /**
@@ -126,7 +167,7 @@ final class ChromeCrossCheckTest extends HtmlSecurityCheckTestCase
     }
 
     /**
-     * The page's path as Chrome will read it: a Windows path when a Windows Chrome runs from WSL
+     * The path as Chrome will read it: a Windows path when a Windows Chrome runs from WSL
      */
     private static function pathForChrome(string $chrome, string $path): string
     {
@@ -134,5 +175,17 @@ final class ChromeCrossCheckTest extends HtmlSecurityCheckTestCase
             return trim((string)shell_exec('wslpath -w ' . escapeshellarg($path)));
         }
         return $path;
+    }
+
+    /**
+     * Delete the page and the Chrome profile, which is a few MB per run
+     */
+    private static function removeDir(string $dir): void
+    {
+        $paths = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
+        foreach ($paths as $path => $info) {
+            $info->isDir() && !$info->isLink() ? @rmdir($path) : @unlink($path);
+        }
+        @rmdir($dir);
     }
 }
