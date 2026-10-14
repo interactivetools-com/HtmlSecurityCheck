@@ -204,6 +204,36 @@ final class CssTest extends HtmlSecurityCheckTestCase
         ];
     }
 
+    /**
+     * url( is a URL only where it starts a name. After a digit, # or a non-ASCII letter it is a
+     * number, hash or longer name and then a ( block, so the comment inside is real and the quote
+     * in it starts nothing (Chrome applies [title^=a] in each of these)
+     */
+    #[DataProvider('notAUrlProvider')]
+    public function testUrlAfterANameCharacterIsNotAUrl(string $css): void
+    {
+        $this->assertRejects("<style>$css</style>", 'css-not-allowed', '[title^=');
+    }
+
+    public static function notAUrlProvider(): array
+    {
+        return [
+            'dimension'        => ["a{a:1url(/*)'*/)}[title^=a]{color:red}"],
+            'dimension, zero'  => ['a{--x:0url(/*)"*/)}[title^=a]{color:red}'],
+            'hash'             => ["a{--x:#url(/*)'*/)}[title^=a]{color:red}"],
+            'non-ASCII name'   => ["a{--x:\u{e9}url(/*)'*/)}[title^=a]{color:red}"],
+        ];
+    }
+
+    /**
+     * After a space or a colon url( starts a URL token, so the quote inside it is part of the URL and
+     * the quote after it starts a string that runs to the end: Chrome does not apply the rule either
+     */
+    public function testUrlAfterAColonIsStillAUrl(): void
+    {
+        $this->assertAccepts("<style>a{background:url(/*)'*/)}[title^=a]{color:red}</style>");
+    }
+
     public function testQuotedUrlsAndStringsStillComeFirst(): void
     {
         $this->assertAccepts('<style>a{b:url("x") /* [t^=a] */}</style>');            // a quoted url is a string, so the comment after it is real

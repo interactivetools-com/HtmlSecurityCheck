@@ -210,7 +210,10 @@ after them, newline included, so `"\a` and a newline do not end the string. An u
 `url()` runs to its closing `)` before either is looked for, so a `/*` or a quote inside it
 is part of the URL, not the start of a comment or string. So a backslash in a comment
 banner, `content: '\a0'` and a font name like `'\@Yu Mincho'` pass, and `content: '/*'`
-cannot hide what follows it. A comment is dropped without leaving a space, as a browser
+cannot hide what follows it. An unquoted `url()` is a URL only where `url(` starts a name:
+after a letter, digit, `_`, `-`, `#`, `@` or non-ASCII character (`1url(`, `#url(`) it is
+part of a number, hash or longer name followed by a `(` block, and a comment inside it is a
+comment. A comment is dropped without leaving a space, as a browser
 drops it, so `[value/**/^=` still rejects and reports `[value^=`. A block that removal or
 any of the three scans cannot finish within a PCRE limit (megabytes inside one comment or
 string, or of `x*|` pairs inside one `[`) rejects with `css-not-allowed` and its first 80

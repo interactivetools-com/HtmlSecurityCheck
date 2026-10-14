@@ -197,8 +197,10 @@ final class HtmlSecurityCheck
     // next character or up to six hex digits plus one whitespace after them (the escape eats that
     // whitespace, so "\a<newline>" does not end the string). An unquoted url() runs to its ) and is
     // stepped over, since /* or a quote inside one is part of the URL, not the start of a comment or
-    // string. No banned token, function or at-rule can be spelled inside a comment or string, so both are removed
-    private const CSS_COMMENT_OR_STRING = '/(?i:url)\(\s*+(?!["\'])(?:[^)\\\\]++|\\\\.)*+\)?+(*SKIP)(*FAIL)|\/\*(?:[^*]++|\*(?!\/))*+(?:\*\/|\z)|"(?:[^"\\\\\n]++|\\\\(?:[0-9a-fA-F]{1,6}[ \t\n]?|.))*+(?:"|\n|\z)|\'(?:[^\'\\\\\n]++|\\\\(?:[0-9a-fA-F]{1,6}[ \t\n]?|.))*+(?:\'|\n|\z)/s';
+    // string. It is a URL only where url( starts a name: 1url(, #url( and éurl( are a number, a hash
+    // or a longer name and then a ( block, where a comment is a comment. No banned token, function
+    // or at-rule can be spelled inside a comment or string, so both are removed
+    private const CSS_COMMENT_OR_STRING = '/(?<![\w\x80-\xFF#@-])(?i:url)\(\s*+(?!["\'])(?:[^)\\\\]++|\\\\.)*+\)?+(*SKIP)(*FAIL)|\/\*(?:[^*]++|\*(?!\/))*+(?:\*\/|\z)|"(?:[^"\\\\\n]++|\\\\(?:[0-9a-fA-F]{1,6}[ \t\n]?|.))*+(?:"|\n|\z)|\'(?:[^\'\\\\\n]++|\\\\(?:[0-9a-fA-F]{1,6}[ \t\n]?|.))*+(?:\'|\n|\z)/s';
 
     // CSS the name allowlists cannot catch: backslash escapes (\6a avascript, and an escape could spell any name),
     // IE behavior: or -ms-behavior: (as the property name, so scroll-behavior passes) and Firefox -moz-binding,
@@ -215,11 +217,11 @@ final class HtmlSecurityCheck
     // a CSS function name and its (, image-set( or --custom(, read with comments and strings removed. The lookbehind
     // makes it a whole name, so in x-rotate( the name is x-rotate, and not an at-rule, so @media(...) is not media(.
     // An unquoted url() is stepped over, since an ( inside it is part of the URL
-    private const CSS_FUNCTION = '/(?<![\w@-])url\([^)]*+(*SKIP)(*FAIL)|(?<![\w@-])(-{0,2}+[a-z_][\w-]*+)\(/i';
+    private const CSS_FUNCTION = '/(?<![\w\x80-\xFF#@-])url\([^)]*+(*SKIP)(*FAIL)|(?<![\w@-])(-{0,2}+[a-z_][\w-]*+)\(/i';
 
     // a CSS at-rule name, @media or @import, read with comments and strings removed; an unquoted url() is stepped
     // over, since url(https://user@host/) holds an @ that starts nothing
-    private const CSS_AT_RULE = '/(?<![\w@-])url\([^)]*+(*SKIP)(*FAIL)|@(-?+[a-z_][\w-]*+)/i';
+    private const CSS_AT_RULE = '/(?<![\w\x80-\xFF#@-])url\([^)]*+(*SKIP)(*FAIL)|@(-?+[a-z_][\w-]*+)/i';
 
     // a backslash inside a quoted url() argument: an escape there still spells a scheme, url("\6a avascript:")
     private const CSS_URL_ESCAPE = '/url\(\s*+["\'][^"\')\\\\]*+\\\\/i';
