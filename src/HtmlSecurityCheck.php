@@ -195,12 +195,13 @@ final class HtmlSecurityCheck
     // CSS comments and quoted strings, read left to right the way the CSS tokenizer does: a comment runs
     // to */ or the end of the text, a string to its closing quote or a bare newline, and \ escapes the
     // next character or up to six hex digits plus one whitespace after them (the escape eats that
-    // whitespace, so "\a<newline>" does not end the string). An unquoted url() runs to its ) and is
-    // stepped over, since /* or a quote inside one is part of the URL, not the start of a comment or
-    // string. It is a URL only where url( starts a name: 1url(, #url( and éurl( are a number, a hash
-    // or a longer name and then a ( block, where a comment is a comment. No banned token, function
-    // or at-rule can be spelled inside a comment or string, so both are removed
-    private const CSS_COMMENT_OR_STRING = '/(?<![\w\x80-\xFF#@-])(?i:url)\(\s*+(?!["\'])(?:[^)\\\\]++|\\\\.)*+\)?+(*SKIP)(*FAIL)|\/\*(?:[^*]++|\*(?!\/))*+(?:\*\/|\z)|"(?:[^"\\\\\n]++|\\\\(?:[0-9a-fA-F]{1,6}[ \t\n]?|.))*+(?:"|\n|\z)|\'(?:[^\'\\\\\n]++|\\\\(?:[0-9a-fA-F]{1,6}[ \t\n]?|.))*+(?:\'|\n|\z)/s';
+    // whitespace, so "\a<newline>" does not end the string). A \ at the end of the text ends the string,
+    // so every string matches and no quote inside one is tried again as a start. An unquoted url() runs
+    // to its ) and is stepped over, since /* or a quote inside one is part of the URL, not the start of a
+    // comment or string. It is a URL only where url( starts a name: 1url(, #url( and éurl( are a number, a
+    // hash or a longer name and then a ( block, where a comment is a comment. No banned token, function or
+    // at-rule can be spelled inside a comment or string, so both are removed
+    private const CSS_COMMENT_OR_STRING = '/(?<![\w\x80-\xFF#@-])(?i:url)\(\s*+(?!["\'])(?:[^)\\\\]++|\\\\.)*+\)?+(*SKIP)(*FAIL)|\/\*(?:[^*]++|\*(?!\/))*+(?:\*\/|\z)|"(?:[^"\\\\\n]++|\\\\(?:[0-9a-fA-F]{1,6}[ \t\n]?|.|\z))*+(?:"|\n|\z)|\'(?:[^\'\\\\\n]++|\\\\(?:[0-9a-fA-F]{1,6}[ \t\n]?|.|\z))*+(?:\'|\n|\z)/s';
 
     // CSS the name allowlists cannot catch: backslash escapes (\6a avascript, and an escape could spell any name),
     // IE behavior: or -ms-behavior: (as the property name, so scroll-behavior passes) and Firefox -moz-binding,

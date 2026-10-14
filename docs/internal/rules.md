@@ -206,18 +206,19 @@ selectors, property names, `:hover`, `!important`, `position: fixed` and vendor 
 Removal reads left to right as a CSS tokenizer does: a comment runs from `/*` to `*/` or
 the end of the text, and a string from its quote to the matching quote or a bare newline.
 Inside a string `\` escapes the next character, or up to six hex digits and one whitespace
-after them, newline included, so `"\a` and a newline do not end the string. An unquoted
-`url()` runs to its closing `)` before either is looked for, so a `/*` or a quote inside it
-is part of the URL, not the start of a comment or string. So a backslash in a comment
-banner, `content: '\a0'` and a font name like `'\@Yu Mincho'` pass, and `content: '/*'`
-cannot hide what follows it. An unquoted `url()` is a URL only where `url(` starts a name:
-after a letter, digit, `_`, `-`, `#`, `@` or non-ASCII character (`1url(`, `#url(`) it is
-part of a number, hash or longer name followed by a `(` block, and a comment inside it is a
-comment. A comment is dropped without leaving a space, as a browser
-drops it, so `[value/**/^=` still rejects and reports `[value^=`. A block that removal or
-any of the three scans cannot finish within a PCRE limit (megabytes inside one comment or
-string, or of `x*|` pairs inside one `[`) rejects with `css-not-allowed` and its first 80
-characters as the detail; it is never passed unchecked.
+after them, newline included, so `"\a` and a newline do not end the string. A `\` at the
+end of the text ends the string, as it does in CSS. An unquoted `url()` runs to its closing
+`)` before either is looked for, so a `/*` or a quote inside it is part of the URL, not the
+start of a comment or string. So a backslash in a comment banner, `content: '\a0'` and a
+font name like `'\@Yu Mincho'` pass, and `content: '/*'` cannot hide what follows it. An
+unquoted `url()` is a URL only where `url(` starts a name: after a letter, digit, `_`, `-`,
+`#`, `@` or non-ASCII character (`1url(`, `#url(`) it is part of a number, hash or longer
+name followed by a `(` block, and a comment inside it is a comment. A comment is dropped
+without leaving a space, as a browser drops it, so `[value/**/^=` still rejects and reports
+`[value^=`. A block that removal or any of the three scans cannot finish within a PCRE
+limit (megabytes inside one comment or string, or of `x*|` pairs inside one `[`) rejects
+with `css-not-allowed` and its first 80 characters as the detail; it is never passed
+unchecked.
 
 ## Rules: Text That Is Not Markup
 

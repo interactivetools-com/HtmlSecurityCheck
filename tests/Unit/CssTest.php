@@ -257,6 +257,17 @@ final class CssTest extends HtmlSecurityCheckTestCase
     }
 
     /**
+     * A string that ends in a lone \ at the end of the block still matches, as CSS ends it there, so no
+     * quote inside it is tried again as the start of a string (256 KB of \" pairs took 18 s with the JIT)
+     */
+    public function testStringEndingInABackslashStaysLinear(): void
+    {
+        $escapedQuotes = str_repeat('\\"', 128 * 1024);
+        $this->assertAccepts("<style>a{x:\"$escapedQuotes\\</style>");
+        $this->assertAccepts("<p style=\"x:'" . str_repeat("\\'", 128 * 1024) . "\\\">x</p>");
+    }
+
+    /**
      * A run of [ costs one step per bracket: the selector's name run stops at the next [ instead of
      * scanning to the end of the block from every one (100K brackets took 3 s with the JIT, 64 s without)
      */
