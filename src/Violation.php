@@ -39,6 +39,7 @@ final class Violation
         'css-not-allowed'        => 'CSS containing %s is not allowed',
         'less-than-in-text'      => 'A < where a browser reads text, not tags: %s',
         'unclosed-markup'        => '%s is not closed',
+        'not-checked'            => 'Content could not be checked: %s',
     ];
 
     /** the message with %s in place of detail; one holds <, so encode the sprintf() result, not the parts */

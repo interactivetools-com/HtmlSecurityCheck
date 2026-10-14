@@ -3,12 +3,15 @@ declare(strict_types=1);
 
 namespace Itools\HtmlSecurityCheck;
 
+use RuntimeException;
+
 // import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
 use function chr;
 use function hexdec;
 use function html_entity_decode;
 use function ltrim;
 use function min;
+use function preg_last_error_msg;
 use function preg_replace_callback;
 use function str_contains;
 use function strlen;
@@ -99,7 +102,7 @@ final class CharacterReferences
             static fn(array $m): string => self::replace($m, $text, $inAttribute),
             $text,
             flags: PREG_OFFSET_CAPTURE,
-        );
+        ) ?? throw new RuntimeException(preg_last_error_msg());   // past a PCRE limit: an undecoded value could hide a scheme, so the check refuses the content
     }
 
     //endregion

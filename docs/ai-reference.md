@@ -168,6 +168,7 @@ Every code, its template, and what `detail` holds. Templates are `Violation::TEM
 | `css-not-allowed`        | `CSS containing %s is not allowed`                                                              | the function or at-rule as written (`expression(`, `@import`), the banned token as matched (`\`, `[value^=`, `unicode-range`) or the `url()` with its target (`url(javascript:x)`), or the first 80 characters of a block past the PCRE limit (megabytes of `x*|` pairs inside one `[`) |
 | `less-than-in-text`      | `A < where a browser reads text, not tags: %s`                                                  | the text from that `<` to the end of the raw text or comment (`<img src=x onerror=alert(1)>`, `<b> c`)                                                    |
 | `unclosed-markup`        | `%s is not closed`                                                                              | the unfinished markup from where it opened to the end of the content (`<img src="//evil.example/?`, `<!-- hidden`, `<style>p { }`)                        |
+| `not-checked`            | `Content could not be checked: %s`                                                              | PHP's own message (`Backtrack limit exhausted`, `Recursion limit exhausted`): a regex stopped at a PCRE limit set far below PHP's default                 |
 
 Details longer than 80 characters are cut at 80 and end with `...`. Newlines and other
 control characters inside a detail are escaped (`\n`), so a detail is always one line.

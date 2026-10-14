@@ -16,9 +16,12 @@ final class ErrorCodesTest extends TestCase
     private const REJECT_DIR = __DIR__ . '/../Support/fixtures/reject';
     private const ERRORS_DOC = __DIR__ . '/../../docs/errors.md';
 
+    /** not-checked needs a PCRE limit lowered far below PHP's default, which a fixture file can't set; PcreLimitTest covers it */
+    private const NO_FIXTURE = ['not-checked'];
+
     public function testEveryCodeHasARejectFixture(): void
     {
-        foreach (array_keys(Violation::TEMPLATES) as $code) {
+        foreach (array_diff(array_keys(Violation::TEMPLATES), self::NO_FIXTURE) as $code) {
             $this->assertFileExists(self::REJECT_DIR . "/$code-1.html", "no reject fixture for $code");
         }
     }

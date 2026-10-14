@@ -8,7 +8,7 @@ use Generator;
 // import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
 use function preg_match;
 use function preg_quote;
-use function preg_replace;
+use function str_ends_with;
 use function str_replace;
 use function strlen;
 use function strncasecmp;
@@ -409,7 +409,12 @@ final class Tokenizer
         $this->pos = $found ? $close + strlen($m[0][0]) : $this->length;
         $data      = str_replace("\0", "\u{FFFD}", substr($html, $dataStart, $dataEnd - $dataStart));
         if ($close === false) {
-            $data           = preg_replace('/(?:--!|--|-)\z/', '', $data);    // at end of input a partial close (-, --, --!) is dropped
+            foreach (['--!', '--', '-'] as $partial) {   // at end of input a partial close is dropped
+                if (str_ends_with($data, $partial)) {
+                    $data = substr($data, 0, -strlen($partial));
+                    break;
+                }
+            }
             $this->unclosed = new Token(Token::UNCLOSED, '', [], false, '', $pos, $this->pos);
         }
         return new Token(Token::COMMENT, '', [], false, $data, $pos, $this->pos);

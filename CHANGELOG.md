@@ -44,6 +44,8 @@ rejects anything that could run script in the page it is printed into, with a `R
   so email templates' `<!--[if mso]>` tables pass and a script inside one rejects.
   `<?import ...>`, which bound a behavior to a prefix in IE 5.5 to 9, is refused.
 - **Byte checks**: invalid UTF-8 and C0 control characters are refused before tokenizing.
+- **A regex that stops at a PCRE limit refuses the content**, never reads as "no match":
+  `not-checked` names the limit, and CSS reports the block as `css-not-allowed`.
 - **`HtmlSecurityCheck::rules()`** returns the rule tables and current switch values for
   settings pages and docs. `Violation::TEMPLATES` holds every message for translation.
 - **A fast path**: text and tags the rules can never refuse (a listed element, double-quoted

@@ -3,8 +3,10 @@ declare(strict_types=1);
 
 namespace Itools\HtmlSecurityCheck;
 
+use RuntimeException;
+
 // import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
-use function addcslashes, array_diff, array_intersect, array_map, array_values, count, implode, in_array, preg_match, preg_match_all, preg_quote, preg_replace, preg_split, str_replace, str_starts_with, stripos, strlen, strncasecmp, strpos, strtolower, substr, trim;
+use function addcslashes, array_diff, array_intersect, array_map, array_values, count, implode, in_array, preg_last_error_msg, preg_match, preg_match_all, preg_quote, preg_replace, preg_split, str_replace, str_starts_with, stripos, strlen, strncasecmp, strpos, strtolower, substr, trim;
 
 use const PREG_OFFSET_CAPTURE, PREG_SPLIT_NO_EMPTY;
 
@@ -316,9 +318,13 @@ final class HtmlSecurityCheck
 
     private function run(string $html): Result
     {
-        if ($this->bytesAllowTokenizing($html)) {
-            $this->html = str_replace(["\r\n", "\r"], "\n", $html);   // so token offsets match the string the details are cut from
-            $this->walk();
+        try {
+            if ($this->bytesAllowTokenizing($html)) {
+                $this->html = str_replace(["\r\n", "\r"], "\n", $html);   // so token offsets match the string the details are cut from
+                $this->walk();
+            }
+        } catch (RuntimeException $e) {   // a regex stopped at a PCRE limit, so the rest of the content was never read
+            $this->fail('not-checked', $e->getMessage());
         }
         return new Result(array_values($this->errors));
     }
@@ -334,7 +340,11 @@ final class HtmlSecurityCheck
             $this->fail('not-utf8', $bad . (strlen($html) - $validLength > 16 ? '...' : ''));
             return false;
         }
-        if (preg_match(self::CONTROL_CHARACTER, $html, $match, PREG_OFFSET_CAPTURE)) {
+        $found = preg_match(self::CONTROL_CHARACTER, $html, $match, PREG_OFFSET_CAPTURE);
+        if ($found === false) {
+            throw new RuntimeException(preg_last_error_msg());
+        }
+        if ($found === 1) {
             $this->fail('control-character', $match[0][0] . ' at byte ' . $match[0][1]);
             return false;
         }
@@ -552,7 +562,10 @@ final class HtmlSecurityCheck
         }
         // srcset and ping are lists: ping splits at spaces, srcset at commas and at the spaces before each descriptor
         $isList = $attribute === 'srcset' || $attribute === 'ping';
-        $urls   = $isList ? (preg_split('/[\s,]++/', $value, -1, PREG_SPLIT_NO_EMPTY) ?: [$value]) : [$value];
+        $urls   = $isList ? preg_split('/[\s,]++/', $value, -1, PREG_SPLIT_NO_EMPTY) : [$value];
+        if ($urls === false) {
+            throw new RuntimeException(preg_last_error_msg());
+        }
         foreach ($urls as $url) {
             $scheme = self::scheme($url);
             if ($scheme === null) {
@@ -674,10 +687,11 @@ final class HtmlSecurityCheck
     {
         $value = self::compact($value);
         // a scheme is a letter followed by letters, digits, + - or . up to the first colon
-        if (!preg_match('/^([a-z][a-z0-9+.\-]*):/i', $value, $match)) {
-            return null;
+        $found = preg_match('/^([a-z][a-z0-9+.\-]*+):/i', $value, $match);
+        if ($found === false) {
+            throw new RuntimeException(preg_last_error_msg());
         }
-        return strtolower($match[1]);
+        return $found === 1 ? strtolower($match[1]) : null;
     }
 
     /**
@@ -685,7 +699,7 @@ final class HtmlSecurityCheck
      */
     private static function compact(string $value): string
     {
-        return preg_replace('/[\x00-\x20\x7F]+/', '', $value);
+        return preg_replace('/[\x00-\x20\x7F]+/', '', $value) ?? throw new RuntimeException(preg_last_error_msg());
     }
 
     //endregion
@@ -720,7 +734,8 @@ final class HtmlSecurityCheck
     private static function excerpt(string $value): string
     {
         preg_match('/^.{0,' . self::$maxDetailLength . '}/us', $value, $match);
-        return strlen($match[0]) < strlen($value) ? "$match[0]..." : $match[0];
+        $cut = $match[0] ?? substr($value, 0, self::$maxDetailLength);   // past a PCRE limit, a byte cut: fail() escapes a split character
+        return strlen($cut) < strlen($value) ? "$cut..." : $cut;
     }
 
     //endregion
