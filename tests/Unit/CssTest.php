@@ -211,7 +211,7 @@ final class CssTest extends HtmlSecurityCheckTestCase
     }
 
     /**
-     * A block past the PCRE limits is still checked: blanking gives up and the text is checked as
+     * A block past the PCRE limits is still checked: removal gives up and the text is checked as
      * written, which is stricter, and the token scan takes a megabyte of letters after a [ in one
      * step, so it never reaches the limit there
      */

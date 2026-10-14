@@ -80,13 +80,14 @@ the rules assume. The likely places:
   whitespace, control characters, character references, case, or an
   attribute a browser reads as a URL that the URL rule does not cover.
 - A CSS construct the CSS check misses: an escape the comment and string
-  blanking does not see, a comment or string boundary read differently from
+  removal does not see, a comment or string boundary read differently from
   a browser's CSS tokenizer, a selector that reports page data in a way the
   substring selector rule does not catch, or a function or at-rule that
   fetches.
-- Unbounded work on attacker-controlled text: a loop whose pass count
-  depends on input syntax, or a pattern where preg_match() returns false
-  past the PCRE limits and the false lets the content through.
+- Work that grows faster than the input on attacker-controlled text: a loop
+  whose pass count depends on input syntax, or a regex that backtracks. And a
+  pattern where preg_match() returns false past the PCRE limits and the false
+  lets the content through.
 
 For each, give the rule that should have applied, why it did not, the
 browser behavior with its source (a spec section or a web-platform test),
@@ -117,8 +118,9 @@ wasted:
 - Rejecting more than a browser would run (<template>, <noscript>, <svg>,
   <math>, unclosed markup, substring selectors, unicode-range, a custom
   element attribute with a refused scheme) is by design.
-- The library's own time and memory: the check is one pass, and memory is
-  the content plus the current token.
+- Time and memory that grow in step with the input: the check is one pass,
+  and memory is the content plus the current token. Only work that grows
+  faster than the input is a finding, as above.
 - Tokenizer, Token and CharacterReferences are marked @internal; their
   public methods are not a public API.
 
