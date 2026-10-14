@@ -136,7 +136,7 @@ already allowed. Update when a new release comes out, and report HTML that gets 
 
 ## Related Libraries
 
-- [SvgSecurityCheck](https://github.com/interactivetools-com/SvgSecurityCheck) - the same check for uploaded SVG files: rejects any that could run script, load an outside resource, or hang a renderer, and never rewrites one it accepts.
+- [SvgSecurityCheck](https://github.com/interactivetools-com/SvgSecurityCheck) - checks uploaded SVG files for anything that could run script and lists each problem it finds.
 - [ZenDB](https://github.com/interactivetools-com/ZenDB) - injection-proof PHP/MySQL database layer with automatic XSS-safe output.
 - [SmartArray](https://github.com/interactivetools-com/SmartArray) - database rows as chainable collections, with fields that HTML-encode themselves on output.
 - [SmartString](https://github.com/interactivetools-com/SmartString) - PHP strings that HTML-encode themselves on echo, interpolation, and concatenation.
