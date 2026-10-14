@@ -84,6 +84,17 @@ attributes, and CSS function names and at-rules must be on the check's allowlist
 it doesn't know is rejected. CSS `url()` must be `http:`, `https:` or a relative path, and a few
 patterns the lists can't catch (`\` escapes, `behavior:`, `[value^=`) are rejected on their own.
 
+## What It Does Not Check
+
+- **Where you print it.** A passing fragment is safe between ordinary tags such as `<div>` or
+  `<td>`, not inside `<script>`, `<style>`, `<textarea>`, `<title>`, inline SVG or an attribute
+  value.
+- **End tags.** A `</div>` in the content passes even when it closes one of your page's
+  elements, so the content can end a wrapper early.
+- **Anything that runs no script.** Images and `url()` on other hosts, `position: fixed`
+  overlays, invalid HTML, `id` or `name` values that match a page script's variables, and
+  length all pass. Cap the size before the check; check time grows in step with size.
+
 ## Additional Protection
 
 Content that passes is safe to print without these. They add a second layer in case a rule is
@@ -97,17 +108,6 @@ ever bypassed, and cover content the check never saw:
 - **Show rejected content without running it.** Print it in
   `<iframe sandbox srcdoc="<?= htmlspecialchars($body) ?>"></iframe>`: no script, forms or
   popups, and no access to your page or its cookies. Images and CSS still load.
-
-## What It Does Not Check
-
-- **Where you print it.** A passing fragment is safe between ordinary tags such as `<div>` or
-  `<td>`, not inside `<script>`, `<style>`, `<textarea>`, `<title>`, inline SVG or an attribute
-  value.
-- **End tags.** A `</div>` in the content passes even when it closes one of your page's
-  elements, so the content can end a wrapper early.
-- **Anything that runs no script.** Images and `url()` on other hosts, `position: fixed`
-  overlays, invalid HTML, `id` or `name` values that match a page script's variables, and
-  length all pass. Cap the size before the check; check time grows in step with size.
 
 ## When You Might Not Want HtmlSecurityCheck
 
