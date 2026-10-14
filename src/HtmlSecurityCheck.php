@@ -549,11 +549,11 @@ final class HtmlSecurityCheck
     private function checkAttribute(string $element, string $attribute, string $value): void
     {
         if (str_starts_with($attribute, 'on')) {
-            $this->fail('event-handler', $attribute);
+            $this->fail('event-handler', self::excerpt($attribute));
             return;
         }
         if (!self::attributeAllowed($attribute, $value)) {
-            $this->fail('attribute-not-allowed', str_starts_with($attribute, 'xmlns:') ? self::excerpt("$attribute=\"$value\"") : $attribute);
+            $this->fail('attribute-not-allowed', self::excerpt(str_starts_with($attribute, 'xmlns:') ? "$attribute=\"$value\"" : $attribute));
             return;
         }
         if ($attribute === 'style') {
@@ -626,7 +626,7 @@ final class HtmlSecurityCheck
         $code  = preg_replace(self::CSS_COMMENT_OR_STRING, '', $css) ?? $css;
         $found = preg_match(self::CSS_FORBIDDEN, $code, $match);
         if ($found === 1) {
-            $this->fail('css-not-allowed', $match[0]);
+            $this->fail('css-not-allowed', self::excerpt($match[0]));
         } elseif ($found === false) {
             $this->fail('css-not-allowed', self::excerpt($css));   // the PCRE limit (megabytes of x*| pairs inside one [): a block too big to check is refused, never passed
         }

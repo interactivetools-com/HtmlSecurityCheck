@@ -78,6 +78,16 @@ final class ResultTest extends HtmlSecurityCheckTestCase
         });
     }
 
+    /** Names and CSS tokens are cut too, so a 500-character attribute name gives a readable message */
+    public function testEveryDetailIsCut(): void
+    {
+        $long = str_repeat('a', 500);
+        $cut  = fn(string $prefix) => substr($prefix . $long, 0, 80) . '...';
+        $this->assertRejects("<p on$long=\"x\">x</p>", 'event-handler', $cut('on'));
+        $this->assertRejects("<p x$long=\"x\">x</p>", 'attribute-not-allowed', $cut('x'));
+        $this->assertRejects("<style>[x$long^=a]{color:red}</style>", 'css-not-allowed', $cut('[x'));
+    }
+
     public function testDetailIsCutOnACharacterBoundary(): void
     {
         $this->withSettings(['maxDetailLength' => 9], function () {
