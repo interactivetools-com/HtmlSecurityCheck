@@ -13,8 +13,9 @@ namespace Itools\HtmlSecurityCheck;
  *         }
  *     }
  *
- * Names are ASCII-lowercased and never entity-decoded, as in browsers. Attribute values and
- * text are entity-decoded; comment and doctype data are not. start and end are byte offsets
+ * Names are ASCII-lowercased and never entity-decoded, as in browsers. Attribute values, text,
+ * and the content of <textarea> and <title> are entity-decoded; the content of <style>,
+ * <iframe> and the other raw-text elements is not, and neither is comment or doctype data. start and end are byte offsets
  * into the input after CR and CRLF were normalized to LF, so substr($html, $start, $end - $start)
  * is the token's source when the input had LF line endings.
  *
@@ -41,7 +42,7 @@ final class Token
      * @param string                $name        tag name for START_TAG and END_TAG, the tag or raw-text element the input ended inside for UNCLOSED, '' otherwise
      * @param array<string|int, string> $attributes  name => decoded value; the first of duplicate names wins (START_TAG only). A name of digits only is an int key, as PHP stores it
      * @param bool                  $selfClosing the tag ended with /> (START_TAG only)
-     * @param string                $data        decoded text (TEXT), comment body (COMMENT), everything after <!DOCTYPE (DOCTYPE)
+     * @param string                $data        text (TEXT, decoded except in raw-text elements), comment body (COMMENT), everything after <!DOCTYPE (DOCTYPE)
      * @param int                   $start       byte offset of the token's first character
      * @param int                   $end         byte offset just past the token
      */

@@ -29,9 +29,11 @@ use const PREG_OFFSET_CAPTURE, PREG_SPLIT_NO_EMPTY;
  * everything that runs script, loads a plugin, belongs in <head>, or changes how a browser
  * reads the bytes after it, plus Word's o:, v: and w: names. Attributes: the HTML Standard's
  * attribute index minus srcdoc and is, the old presentational ones, aria-*, and Word's own.
- * on* is refused by prefix, URL attributes may only use http, https, mailto and tel, no
- * attribute may start with javascript:, and CSS is checked for the constructs that once ran
- * script and the two selectors that leak page data. Unknown elements and attributes are refused.
+ * on* is refused by prefix, URL attributes may only use a scheme in $urlSchemes (http, https,
+ * mailto and tel by default) or data:image/ on <img src>, and no other attribute but style may
+ * start with javascript:. style is checked as CSS: function names and at-rules are allowlists
+ * too, url() is limited to http and https, and a few patterns are refused on their own.
+ * Unknown elements and attributes are refused.
  *
  * The check runs on the HTML5 token stream and never builds a tree, so it sees the same
  * tags and attributes a browser does, in one pass, with memory that does not grow with
@@ -139,9 +141,10 @@ final class HtmlSecurityCheck
     public const FORM_ATTRIBUTES = ['formaction'];
 
     /**
-     * Schemes refused at the start of every attribute value, URL attribute or not. The browser
-     * ignores a javascript: in title= or value=, but a page script that copies the value
-     * into a link or into location runs it, so no value may start with one.
+     * Schemes refused at the start of every attribute value but style, URL attribute or not. The
+     * browser ignores a javascript: in title= or value=, but a page script that copies the value
+     * into a link or into location runs it, so no value may start with one. A style value is
+     * checked as CSS instead, where url(javascript:...) is refused.
      */
     public const SCRIPT_SCHEMES = ['javascript'];
 
@@ -381,8 +384,8 @@ final class HtmlSecurityCheck
             }
             $rawText = '';
             if ($token->type === Token::START_TAG) {
-                $this->checkStartTag($token);
-                $rawText = in_array($token->name, ['style', 'iframe', 'textarea'], true) ? $token->name : '';   // the allowed elements whose content is text to the end tag
+                $allowed = $this->checkStartTag($token);
+                $rawText = $allowed && in_array($token->name, ['style', 'iframe', 'textarea'], true) ? $token->name : '';   // the allowed elements whose content is text to the end tag; a refused one reports once
             } elseif ($token->type === Token::COMMENT) {
                 if (substr($this->html, $token->start, 4) !== '<!--') {   // <?php ...>, <!x ...> and </ x>: comments to a browser, ending at the first >
                     if (strncasecmp($token->data, '?import', 7) === 0) {   // <?import namespace="x" implementation="..."> bound a behavior to a prefix in IE 5.5 to 9
@@ -516,14 +519,15 @@ final class HtmlSecurityCheck
     //region Token Rules
 
     /**
-     * A refused element reports once and its attributes are not checked, so <script onload> gives one message
+     * A refused element reports once and its attributes are not checked, so <script onload> gives one message.
+     * Returns whether the element is allowed
      */
-    private function checkStartTag(Token $token): void
+    private function checkStartTag(Token $token): bool
     {
         $name = $token->name;
         if (!$this->elementAllowed($name)) {
             $this->fail('element-not-allowed', self::excerpt($this->source($token)));
-            return;
+            return false;
         }
         if ($name === 'iframe') {
             $this->checkIframe($token);
@@ -531,6 +535,7 @@ final class HtmlSecurityCheck
         foreach ($token->attributes as $attribute => $value) {
             $this->checkAttribute($name, (string)$attribute, $value);   // PHP stores a name of digits only, <p 1="x">, as an int key
         }
+        return true;
     }
 
     private function elementAllowed(string $name): bool

@@ -92,7 +92,8 @@ final class Result
 
 `errors` holds one `Violation` per distinct problem (deduplicated by code and detail), in the
 order found. `not-utf8` and `control-character` stop the check before tokenizing, so either
-arrives alone. `unclosed-markup`, when present, is always the last entry.
+arrives alone. `unclosed-markup` is the last entry, except inside a `<!--[if ...]>` conditional
+comment, where the open piece runs only to the end of the comment.
 
 ### Violation
 
@@ -158,14 +159,14 @@ Every code, its template, and what `detail` holds. Templates are `Violation::TEM
 
 | Code                     | Template                                                                                        | `detail`                                                                                                                                                  |
 |--------------------------|-------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `not-utf8`               | `Content must be UTF-8, this is not: %s`                                                        | the 16 bytes from the first invalid byte, non-UTF-8 bytes escaped as octal (`\351`), then `...` when more follows                                         |
+| `not-utf8`               | `Content must be UTF-8, this is not: %s`                                                        | the 16 bytes from the first invalid byte, every byte from 0x80 up escaped as octal (`\351`, and `é` as `\303\251`), then `...` when more follows                      |
 | `control-character`      | `Content contains a control character: %s`                                                      | the character escaped (`\000`, `\033`, `\f`, `\v`) and ` at byte N`, for the first one found                                                             |
-| `element-not-allowed`    | `%s is not allowed`                                                                             | the start tag as written, from `<` to `>` (`<script src="x">`), or the doctype (`<!DOCTYPE html>`)                                                        |
+| `element-not-allowed`    | `%s is not allowed`                                                                             | the start tag as written, from `<` to `>` (`<script src="x">`), the doctype (`<!DOCTYPE html>`), or the `<?import ...>` comment                            |
 | `event-handler`          | `%s= event handler attributes are not allowed`                                                  | the attribute name, lowercased (`onclick`)                                                                                                                |
 | `attribute-not-allowed`  | `The %s attribute is not allowed`                                                               | the attribute name, lowercased (`data-id`, `x-init`, `srcdoc`), or for an `xmlns:*` declaration the name and value (`xmlns:o="http://www.w3.org/1999/xhtml"`) |
 | `url-scheme-not-allowed` | `%s uses a URL scheme that is not allowed`                                                      | the attribute name and its decoded value (`href="javascript:alert(1)"`)                                                                                   |
-| `iframe-host`            | `Embedding frames from %s is not allowed`                                                       | the `src` value with whitespace removed (`https://evil.example/x`), or `(no src)`                                                                         |
-| `css-not-allowed`        | `CSS containing %s is not allowed`                                                              | the function or at-rule as written (`expression(`, `@import`), the banned token as matched (`\`, `[value^=`, `unicode-range`) or the `url()` with its target (`url(javascript:x)`), or the first 80 characters of a block past the PCRE limit (megabytes of `x*|` pairs inside one `[`) |
+| `iframe-host`            | `Embedding frames from %s is not allowed`                                                       | the `src` value with tabs and newlines removed and the ends trimmed (`https://evil.example/x`), or `(no src)`                                             |
+| `css-not-allowed`        | `CSS containing %s is not allowed`                                                              | the function or at-rule as written (`expression(`, `@import`), the banned token as matched (`\`, `[value^=`, `unicode-range`) or the `url()` with its target (`url(javascript:x)`), `url('\` for a backslash in a quoted `url()`, or the first 80 characters of a block past the PCRE limit (megabytes of `x*|` pairs inside one `[`) |
 | `less-than-in-text`      | `A < where a browser reads text, not tags: %s`                                                  | the text from that `<` to the end of the raw text or comment (`<img src=x onerror=alert(1)>`, `<b> c`)                                                    |
 | `unclosed-markup`        | `%s is not closed`                                                                              | the unfinished markup from where it opened to the end of the content (`<img src="//evil.example/?`, `<!-- hidden`, `<style>p { }`)                        |
 | `not-checked`            | `Content could not be checked: %s`                                                              | PHP's own message (`Backtrack limit exhausted`, `Recursion limit exhausted`): a regex stopped at a PCRE limit set far below PHP's default                 |
@@ -186,7 +187,7 @@ them.
   refused on purpose: `script`, `noscript`, `template`, `svg`, `math`, `object`, `embed`,
   `applet`, `base`, `link`, `meta`, `html`, `head`, `body`, `title`, and custom
   elements (`<my-widget>`), which a page script can define. A refused tag is one error; its
-  attributes are not checked.
+  attributes, and the content of a refused `<style>` or `<textarea>`, are not checked.
 - **Attributes.** A name starting with `on` is `event-handler`. A name passes when it is in
   `ATTRIBUTES`, starts with an entry in `ATTRIBUTE_PREFIXES` (`aria-`, `o:`, `v:`, `w:`), is
   an `xmlns:*` whose value starts with an entry in `OFFICE_NAMESPACES`, or is in
@@ -196,8 +197,8 @@ them.
 - **URLs.** On `URL_ATTRIBUTES` a value must have no scheme or one in `$urlSchemes`; every URL
   in a `srcset` or `ping` list is checked. The scheme is read as a browser reads it, entities
   decoded and whitespace dropped, so `jav&#x09;ascript:` is `javascript:`. `data:image/...`
-  passes on `<img src>` only. Every other attribute value is refused only when it starts with
-  a scheme in `SCRIPT_SCHEMES` (`javascript:`).
+  passes on `<img src>` only. Every other attribute value but `style`, which is checked as
+  CSS, is refused only when it starts with a scheme in `SCRIPT_SCHEMES` (`javascript:`).
 - **Iframes.** `src` must be `https://`, `http://` or `//`, then a host in `$iframeHosts`
   matched whole (`player.vimeo.com` is not `vimeo.com`; no port, no subdomains), then the
   end or `/`, `?` or `#`. Otherwise `iframe-host`.
@@ -206,13 +207,14 @@ them.
   `expression(` and `@import` are refused. Also refused: `\`, `behavior:`, `-ms-behavior:`,
   `-moz-binding`, `unicode-range`, and `[attr^=`, `$=` or `*=` on any attribute but `style`,
   `src` and `class`. `url()` must be relative or in `CSS_URL_SCHEMES` (`http`, `https`).
-  Comments and quoted strings are skipped. Property names are not checked: `position: fixed`
-  and `mso-*` pass.
-- **Parser differences.** Invalid UTF-8 or a control character other than tab, LF and CR is
-  the only error reported. A `<` inside `<style>`, `<iframe>`, `<textarea>` or a comment that
+  Comments and quoted strings are skipped for the names and banned patterns; the `url()`
+  check reads them too, so `/* url(javascript:x) */` is refused. Property names are not
+  checked: `position: fixed` and `mso-*` pass.
+- **Parser differences.** Invalid UTF-8 or a C0 control character (U+0000 to U+001F) other
+  than tab, LF and CR is the only error reported; DEL and U+0080 to U+009F pass. A `<` inside `<style>`, `<iframe>`, `<textarea>` or a comment that
   is not `<!-- -->` (`<?php ?>`, `<!x>`) is `less-than-in-text`; a `<!--` inside `<style>`
   passes when its `-->` is in the same block. A tag, quoted value,
-  comment or `<style>` left open at the end is `unclosed-markup`, always the last error.
+  comment or `<style>` left open at the end is `unclosed-markup`.
 - **Not checked.** End tags, text and comments, except the markup inside a
   `<!--[if ...]> ... <![endif]-->` conditional comment, which gets the same rules as the rest.
 
@@ -302,7 +304,7 @@ storeitemid temporary text xpath namespaceuri
 `http`, `https`, `mailto`, `tel`
 <!-- /rules:urlSchemes -->
 
-**`scriptSchemes`** (refused on every attribute): <!-- rules:scriptSchemes -->
+**`scriptSchemes`** (refused at the start of every attribute value but `style`): <!-- rules:scriptSchemes -->
 `javascript`
 <!-- /rules:scriptSchemes -->
 
@@ -379,7 +381,8 @@ form or the API before the check.
 - **A byte error arrives alone.** `not-utf8` and `control-character` stop the check before
   tokenizing.
 - **`detail` and `message` are unencoded text from the content.** Always one line of valid
-  UTF-8 (control characters and bytes that are not UTF-8 are escaped, as `\n` or `\351`), but
+  UTF-8 (control characters are escaped as `\n`, and in a `not-utf8` detail every byte from
+  0x80 up as `\351`), but
   they can hold `</script>`, quotes and backticks. HTML-encode for a page. A JSON response
   with `Content-Type: application/json` needs nothing extra. Inside a `<script>` block:
 

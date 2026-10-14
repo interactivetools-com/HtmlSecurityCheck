@@ -78,4 +78,13 @@ final class RawTextTest extends HtmlSecurityCheckTestCase
         $result = HtmlSecurityCheck::check('<style>p{width: expression(1)} <b></style>');
         $this->assertSame(['less-than-in-text', 'css-not-allowed'], array_column($result->errors, 'code'));
     }
+
+    /** The element is the one error: its content goes with it */
+    public function testARefusedElementReportsOnce(): void
+    {
+        $this->assertSame(['element-not-allowed'], array_column(HtmlSecurityCheck::check('<textarea><b></textarea>')->errors, 'code'));   // forms are off by default
+        $this->withSettings(['allowStyleElement' => false], function () {
+            $this->assertSame(['element-not-allowed'], array_column(HtmlSecurityCheck::check('<style>p{width: expression(1)} <b></style>')->errors, 'code'));
+        });
+    }
 }

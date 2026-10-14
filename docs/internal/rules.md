@@ -29,7 +29,8 @@ changing a rule reads it with `src/HtmlSecurityCheck.php`. The API and the rule 
    allowlist reports `attribute-not-allowed`; `style` is checked as CSS; every other value has
    its URL scheme checked.
 5. **Unclosed markup.** If the content ended inside a tag, a comment, a doctype or a raw-text
-   element, `unclosed-markup` is added last.
+   element, `unclosed-markup` is added last. Inside a conditional comment the open piece ends
+   at the comment's end, so its `unclosed-markup` comes before the errors after the comment.
 6. **Cap.** The check stops after `$maxErrors` distinct errors.
 
 ## Rules: Bytes

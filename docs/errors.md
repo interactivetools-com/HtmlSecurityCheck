@@ -30,9 +30,10 @@ Three things to know when reading a result:
   the content is read as HTML. Fix the bytes and check again; the other problems are
   reported then.
 - **A refused tag reports once.** `<script onload="x" src="javascript:1">` is one
-  `element-not-allowed`, not three errors. Its attributes are not checked, since the tag is
-  going away.
+  `element-not-allowed`, not three errors. Its attributes, and the content of a refused
+  `<style>` or `<textarea>`, are not checked, since the tag is going away.
 - **The same problem on five tags is reported once.** Errors are deduplicated by code and
   detail: five `<script>` tags are one error, five different `on*` attributes are five. The
   list stops at `HtmlSecurityCheck::$maxErrors` distinct problems (50 by default), and
-  `unclosed-markup` is always last.
+  `unclosed-markup` is last, except inside a `<!--[if ...]>` comment, where it ends at the
+  comment's end.
