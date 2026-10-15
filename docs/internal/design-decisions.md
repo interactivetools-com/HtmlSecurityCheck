@@ -95,8 +95,16 @@ author could do; none of them is script.
   leaks one yes or no per guess. Accepted as impractical against a token; the substring
   selectors that leak one character at a time are refused.
 - **Content size.** No limit; time grows with the size and nothing else (every scan over content
-  is linear, and a regex that reaches the PCRE limit refuses the block instead of passing it). Cap
-  it at the form or the API.
+  is linear, and a regex that reaches the PCRE limit refuses the block instead of passing it),
+  except for the attribute names below. Cap it at the form or the API.
+- **Attribute names that share a PHP hash.** The tokenizer keys a tag's attributes by name, so the
+  first of two duplicates wins, as in browsers. PHP's string hash is h*33+c, so `a~` and `b]` hash
+  the same, and every name built from those two blocks after `aria-` lands in one hash chain.
+  16,384 of them on one tag (544 KB) take 0.8 s on PHP 8.1 and 8.5, against under 0.07 s for
+  ordinary names, and the content passes. A per-tag limit was left out because the fast path's
+  regex can't count attributes: PCRE refuses to compile a `{0,1000}` repeat of the attribute
+  group, so the limit would apply only with the fast path off. The size cap at the form or the
+  API limits this too.
 - **Sense.** Whether the text is blank, wrong, offensive or copied.
 
 ## Reject, Never Rewrite
