@@ -12,8 +12,11 @@ use RecursiveIteratorIterator;
 /**
  * A second opinion from a real browser: every fragment the check accepts is parsed by Chrome, and
  * the tree Chrome builds must hold no script element, no on* attribute and no javascript: URL. The
- * rules read our own tokenizer's tokens; this is the test that fails the day it reads a tag
- * differently from Blink.
+ * CSS Chrome parsed from each <style> and style attribute, read back from its stylesheets, must hold
+ * nothing the check refuses: an at-rule or function off its allowlist, a url() scheme other than
+ * http or https, an [attr^=], [attr$=] or [attr*=] selector, or unicode-range. The rules read our
+ * own tokenizer's tokens and our own CSS scans; this is the test that fails the day either reads
+ * something differently from Blink.
  *
  * One headless Chrome run does it all: the fragments (the accept and tinymce4 fixtures, the html5lib
  * tokenizer inputs, and the corpus when it is present) go into tests/Support/chrome-cross-check.html
@@ -21,8 +24,8 @@ use RecursiveIteratorIterator;
  * findings back. A DOMParser document has scripting off, so <noscript> content is parsed as markup,
  * and the walk enters <template> content: neither hides anything from it.
  *
- * Three reject fixtures go through the same page as canaries, one for each thing the page looks
- * for, and each must be flagged, so a page that stopped finding anything fails too.
+ * Canaries go through the same page, one for each thing it looks for, and each must be flagged, so
+ * a page that stopped finding anything fails too.
  *
  * Chrome is found through CHROME_PATH, the usual names on PATH, or the install locations. In CI
  * the test runs on the Linux jobs only, and fails there without Chrome except on ARM, where Google
@@ -37,6 +40,18 @@ final class ChromeCrossCheckTest extends HtmlSecurityCheckTestCase
     // a <script>, an on* attribute and a javascript: URL behind an entity: one reject fixture per finding the page reports
     private const CANARIES = ['element-not-allowed-1.html', 'event-handler-1.html', 'url-scheme-not-allowed-1.html'];
 
+    // one CSS canary per thing the page looks for in the CSS Chrome parsed
+    private const CSS_CANARIES = [
+        'canary css selector'      => '<style>[title^=a]{color:red}</style>',
+        'canary css at-rule'       => '<style>@import url(x.css);</style>',
+        'canary css unicode-range' => '<style>@font-face{font-family:f;src:url(f.woff);unicode-range:U+61}</style>',
+        'canary css function'      => '<p style="background:image-set(url(a.png) 1x)">x</p>',
+        'canary css url scheme'    => '<p style="background:url(data:image/png;base64,AAAA)">x</p>',
+    ];
+
+    // the attributes [attr^=], [attr$=] and [attr*=] may test, as the check's CSS_FORBIDDEN pattern lists them
+    private const PREFIX_SELECTOR_ATTRIBUTES = ['style', 'src', 'class'];
+
     private const CHROME_NAMES = ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser'];
 
     // where Chrome installs when it is not on PATH: macOS, Windows, and Windows as seen from WSL
@@ -48,7 +63,7 @@ final class ChromeCrossCheckTest extends HtmlSecurityCheckTestCase
         '/mnt/c/Program Files (x86)/Google/Chrome/Application/chrome.exe',
     ];
 
-    public function testChromeFindsNoScriptInAcceptedContent(): void
+    public function testChromeFindsNoScriptOrRefusedCssInAcceptedContent(): void
     {
         if (getenv('CI') && PHP_OS_FAMILY !== 'Linux') {
             $this->markTestSkipped('runs on the Linux CI jobs only: Chrome parses the same on every platform');
@@ -64,7 +79,7 @@ final class ChromeCrossCheckTest extends HtmlSecurityCheckTestCase
         }
         $accepted = self::acceptedContent();
         $this->assertGreaterThan(1000, count($accepted));
-        $canaries = [];
+        $canaries = self::CSS_CANARIES;
         foreach (self::CANARIES as $file) {
             $canaries["canary $file"] = file_get_contents(self::FIXTURES . "/reject/$file");
         }
@@ -76,7 +91,7 @@ final class ChromeCrossCheckTest extends HtmlSecurityCheckTestCase
             $flagged[strstr($finding, ': ', true)][] = $finding;   // each finding is "case name: what was found"
         }
         $this->assertSame([], array_keys(array_diff_key($canaries, $flagged)), 'the page no longer flags these known payloads');
-        $this->assertSame([], array_diff_key($flagged, $canaries), 'Chrome found script in content the check accepted');
+        $this->assertSame([], array_diff_key($flagged, $canaries), 'Chrome found script or refused CSS in content the check accepted');
     }
 
     /**
@@ -91,7 +106,13 @@ final class ChromeCrossCheckTest extends HtmlSecurityCheckTestCase
         $dir = sys_get_temp_dir() . '/htmlcheck-chrome-' . bin2hex(random_bytes(4));
         mkdir($dir);
         $page = "$dir/cross-check.html";
-        file_put_contents($page, str_replace('__CASES__', self::json($cases), file_get_contents(self::HARNESS)));
+        $css = [
+            'atRules'          => HtmlSecurityCheck::CSS_AT_RULES,
+            'functions'        => HtmlSecurityCheck::CSS_FUNCTIONS,
+            'urlSchemes'       => HtmlSecurityCheck::CSS_URL_SCHEMES,
+            'prefixAttributes' => self::PREFIX_SELECTOR_ATTRIBUTES,
+        ];
+        file_put_contents($page, strtr(file_get_contents(self::HARNESS), ['__CASES__' => self::json($cases), '__CSS__' => self::json($css)]));
         try {
             [$dom, , $exit] = $this->runCommand([
                 $chrome, '--headless', '--disable-gpu', '--no-sandbox', '--no-first-run',

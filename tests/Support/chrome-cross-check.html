@@ -1,16 +1,80 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>cross-check</title>
-<!-- ChromeCrossCheckTest fills in the cases, runs this page in headless Chrome and reads the result out of the pre -->
+<!-- ChromeCrossCheckTest fills in the cases and the CSS allowlists, runs this page in headless Chrome and reads the result out of the pre -->
 <script id="cases" type="application/json">__CASES__</script>
+<script id="css" type="application/json">__CSS__</script>
 <pre id="out">not run</pre>
 <script>
 window.onerror = (message, source, line) => {
     document.getElementById('out').textContent = 'ERR ' + message + ' line ' + line;
 };
 const cases = JSON.parse(document.getElementById('cases').textContent);
+const css   = JSON.parse(document.getElementById('css').textContent);
 document.getElementById('cases').remove();   // so the dumped DOM is the result, not the input again
 const found = [];
+
+// The CSS as Chrome parsed it, read back from the CSSOM: what the check refuses must not be in a rule Chrome kept.
+// Chrome writes every string with double quotes, so they are blanked before names are read, and a url() keeps its quotes.
+const STRING = /"(?:[^"\\]|\\.)*"/g;
+const checkCssText = (text, name, where) => {
+    const code = text.replace(STRING, '""');
+    for (const [, fn] of code.matchAll(/(?<![\w-])(-*[a-z_][\w-]*)\(/gi)) {   // a function name and its (, :not( and image-set( alike
+        if (!css.functions.includes(fn.toLowerCase())) {
+            found.push(name + ': ' + fn + '( in ' + where);
+        }
+    }
+    for (const [, attribute] of code.matchAll(/\[\s*(?:(?:\*|[\w-]*)\|)?([^\s|=^$*\]]+)\s*[\^$*]=/g)) {   // [attr^=, [attr$= or [attr*=, with or without a namespace
+        if (!css.prefixAttributes.includes(attribute.toLowerCase())) {
+            found.push(name + ': [' + attribute + ' prefix, suffix or substring selector in ' + where);
+        }
+    }
+    for (const [, url] of text.matchAll(/url\("((?:[^"\\]|\\.)*)"\)/gi)) {
+        const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(url.replace(/[\x00-\x20]/g, ''));   // the scheme as a browser reads it
+        if (scheme && !css.urlSchemes.includes(scheme[1].toLowerCase())) {
+            found.push(name + ': url("' + url.slice(0, 60) + '") in ' + where);
+        }
+    }
+};
+const checkDeclarations = (style, name, where) => {
+    for (const property of style) {
+        checkCssText(style.getPropertyValue(property), name, where + ' ' + property);
+    }
+};
+const checkRules = (rules, name) => {
+    for (const rule of rules) {
+        const atRule = /^@(-?[\w-]+)/.exec(rule.cssText);
+        if (atRule && !css.atRules.includes(atRule[1].toLowerCase())) {
+            found.push(name + ': @' + atRule[1]);
+        }
+        if (rule.selectorText !== undefined) {
+            checkCssText(rule.selectorText, name, 'selector ' + rule.selectorText.slice(0, 60));
+        }
+        if (rule.conditionText !== undefined) {
+            checkCssText(rule.conditionText, name, '@' + (atRule ? atRule[1] : '') + ' ' + rule.conditionText.slice(0, 60));
+        }
+        if (rule.style) {
+            checkDeclarations(rule.style, name, atRule ? '@' + atRule[1] : 'rule');
+            if (rule.style.getPropertyValue('unicode-range')) {
+                found.push(name + ': unicode-range');
+            }
+        }
+        if (rule.cssRules) {
+            checkRules(rule.cssRules, name);   // @media and @supports blocks, @keyframes steps and nested rules
+        }
+    }
+};
+// a <style> inside <template> content gets no stylesheet, so a copy goes into a document that gives it one
+const sheetOf = style => {
+    if (style.sheet) {
+        return style.sheet;
+    }
+    const doc = document.implementation.createHTMLDocument('');
+    const copy = doc.importNode(style, true);
+    doc.head.append(copy);
+    return copy.sheet;
+};
+
 const walk = (root, name) => {
     for (const element of root.querySelectorAll('*')) {
         if (element.localName === 'script') {
@@ -24,6 +88,15 @@ const walk = (root, name) => {
             if (/^javascript:/i.test(attribute.value.replace(/[\x00-\x20\x7f]/g, ''))) {
                 found.push(name + ': ' + attribute.name + '="' + attribute.value.slice(0, 60) + '"');
             }
+        }
+        if (element.localName === 'style') {
+            const sheet = sheetOf(element);
+            if (sheet) {
+                checkRules(sheet.cssRules, name);
+            }
+        }
+        if (element.hasAttribute('style') && element.style) {
+            checkDeclarations(element.style, name, 'style attribute');
         }
         if (element.localName === 'template') {
             walk(element.content, name);   // template content is a separate fragment, invisible to the walk above
