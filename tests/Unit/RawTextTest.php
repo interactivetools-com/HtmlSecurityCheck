@@ -79,6 +79,18 @@ final class RawTextTest extends HtmlSecurityCheckTestCase
         $this->assertSame(['less-than-in-text', 'css-not-allowed'], array_column($result->errors, 'code'));
     }
 
+    /**
+     * One search for --> serves every <style> after it, so a page of <style><!--</style> with no
+     * --> anywhere stays linear (each block searched to the end of the page took 1.2 s at 255 KB),
+     * and a --> found past one block still closes the <!-- in the next
+     */
+    public function testStyleCommentsStayLinear(): void
+    {
+        $this->assertRejects(str_repeat('<style><!--</style>', 55000), 'less-than-in-text', '<!--');
+        $this->assertAccepts('<style><!-- a{} --></style><style><!-- b{} --></style>');
+        $this->assertRejects('<style><!--</style><style><!-- --></style>', 'less-than-in-text', '<!--');
+    }
+
     /** The element is the one error: its content goes with it */
     public function testARefusedElementReportsOnce(): void
     {

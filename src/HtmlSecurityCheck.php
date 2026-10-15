@@ -318,6 +318,9 @@ final class HtmlSecurityCheck
 
     private string $html = '';
 
+    /** The first --> after the last <!-- searched from in a <style>: -1 before the first search, false when there is none; blocks come in order, so one search serves them all */
+    private int|false $styleCommentClose = -1;
+
     /** True for the check of a conditional comment's inner markup, which reads no conditional comment inside it */
     private bool $insideConditionalComment = false;
 
@@ -427,10 +430,10 @@ final class HtmlSecurityCheck
     private function checkNoLessThan(int $from, int $end, bool $allowStyleComment = false): void
     {
         $lessThan = strpos($this->html, '<', $from);
-        $close    = -1;
         while ($allowStyleComment && $lessThan !== false && substr($this->html, $lessThan, 4) === '<!--') {
-            if ($close < $lessThan + 2) {   // the next --> serves every <!-- before it, so each search starts past the last
-                $close = strpos($this->html, '-->', $lessThan + 2);   // where strip_tags() ends it: <!--> closes at once
+            $close = $this->styleCommentClose;
+            if ($close !== false && $close < $lessThan + 2) {   // the next --> serves every <!-- before it, so each search starts past the last
+                $close = $this->styleCommentClose = strpos($this->html, '-->', $lessThan + 2);   // where strip_tags() ends it: <!--> closes at once
             }
             if ($close === false || $close + 3 > $end) {
                 break;
