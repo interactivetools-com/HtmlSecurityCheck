@@ -228,8 +228,10 @@ final class HtmlSecurityCheck
     private const CSS_URL_ESCAPE = '/url\(\s*+["\'][^"\')\\\\]*+\\\\/i';
 
     // every url( in CSS, capturing a quoted argument up to its closing quote, whitespace included, since the
-    // scheme is read with tabs and newlines dropped (url("java\tscript:")), and an unquoted one up to the paren or whitespace
-    private const CSS_URL = '/url\(\s*+(?|"([^"]*+)|\'([^\']*+)|([^"\')\s]*+))/i';
+    // scheme is read with tabs and newlines dropped (url("java\tscript:")), and an unquoted one up to the paren or whitespace.
+    // The argument is read in a lookahead, so the next match starts right after url( and every url( gets its own: a
+    // url( in a comment or string cannot take the real url() after it as its argument
+    private const CSS_URL = '/url\(\s*+(?=(?|"([^"]*+)|\'([^\']*+)|([^"\')\s]*+)))/i';
 
     // the longest run of well-formed UTF-8 from the start; the byte after the match is the first bad one
     private const UTF8_PREFIX = '/\A(?:[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2})*+/';

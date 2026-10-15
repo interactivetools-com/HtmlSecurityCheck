@@ -112,6 +112,8 @@ final class CssTest extends HtmlSecurityCheckTestCase
             'unknown scheme url'    => ['background: url(ftp://example.com/x.png)', 'url(ftp://example.com/x.png)'],
             'mailto url'            => ['background: url(mailto:a@b.c)', 'url(mailto:a@b.c)'],
             'url uppercase'         => ['background: URL(JAVASCRIPT:x)', 'url(JAVASCRIPT:x)'],
+            'url after a comment'   => ['/*url(*/background:url(javascript:x)', 'url(javascript:x)'],   // the url( in the comment is read on its own
+            'url after a string'    => ["content: 'url('; background: url(javascript:x)", 'url(javascript:x)'],
         ];
     }
 
