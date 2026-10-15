@@ -183,6 +183,23 @@ final class UrlsTest extends HtmlSecurityCheckTestCase
         });
     }
 
+    /**
+     * An entry that is not a scheme name is ignored. The fast path matched ' javascript' as written, so
+     * href=" javascript:..." skipped the full check, and the browser drops the space and runs it
+     */
+    public function testAnEntryThatIsNotASchemeNameIsIgnored(): void
+    {
+        $this->withSettings(['urlSchemes' => ['https', ' javascript', "java\tscript", 'javascript:', "javascript\n", 'tel:']], function () {
+            foreach ([true, false] as $fastPath) {
+                $this->withSettings(['fastPath' => $fastPath], function () {
+                    $this->assertRejects('<a href=" javascript:alert(1)">x</a>', 'url-scheme-not-allowed');
+                    $this->assertRejects("<a href=\"java\tscript:alert(1)\">x</a>", 'url-scheme-not-allowed');
+                });
+            }
+            $this->assertSame(['https'], HtmlSecurityCheck::rules()['urlSchemes']);
+        });
+    }
+
     public function testASchemeNameIsMatchedAsWritten(): void
     {
         // a . or + in a listed name is that character, not a regex wildcard, on the fast path too

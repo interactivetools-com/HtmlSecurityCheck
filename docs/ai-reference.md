@@ -80,6 +80,7 @@ round.
 when the visitor's machine should open it on a click (`sms`, `whatsapp`, an app link): every
 scheme past the four defaults hands the click to whatever program is registered for it.
 `javascript` is refused whatever the list holds, so a wrong entry cannot turn the check off.
+An entry that is not a scheme name (`'tel:'`, `' https'`) is ignored, and `rules()` leaves it out.
 
 ### Result
 

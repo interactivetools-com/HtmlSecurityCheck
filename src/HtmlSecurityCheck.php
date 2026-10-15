@@ -6,7 +6,7 @@ namespace Itools\HtmlSecurityCheck;
 use RuntimeException;
 
 // import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
-use function addcslashes, array_diff, array_intersect, array_map, array_values, count, implode, in_array, max, preg_last_error_msg, preg_match, preg_match_all, preg_quote, preg_replace, preg_split, str_replace, str_starts_with, stripos, strlen, strncasecmp, strpos, strtolower, substr, trim;
+use function addcslashes, array_diff, array_intersect, array_map, array_values, count, implode, in_array, max, preg_grep, preg_last_error_msg, preg_match, preg_match_all, preg_quote, preg_replace, preg_split, str_replace, str_starts_with, stripos, strlen, strncasecmp, strpos, strtolower, substr, trim;
 
 use const PREG_OFFSET_CAPTURE, PREG_SPLIT_NO_EMPTY;
 
@@ -693,14 +693,17 @@ final class HtmlSecurityCheck
     }
 
     /**
-     * $urlSchemes as the check reads it: lowercase, and never a script scheme, so a site that lists
-     * javascript by mistake keeps the one promise the library makes
+     * $urlSchemes as the check reads it: lowercase scheme names only, and never a script scheme, so a
+     * site that lists javascript by mistake keeps the one promise the library makes. An entry that is
+     * not a scheme name (' javascript', 'tel:') is ignored: the fast path matches each entry as
+     * written, and a browser drops the space or tab that would make it a different word
      *
      * @return string[]
      */
     private static function urlSchemes(): array
     {
-        return array_values(array_diff(array_map(strtolower(...), self::$urlSchemes), self::SCRIPT_SCHEMES));
+        $names = preg_grep('/^[a-z][a-z0-9+.-]*+\z/', array_map(strtolower(...), self::$urlSchemes));   // a letter, then letters, digits, + . or -
+        return array_values(array_diff($names, self::SCRIPT_SCHEMES));
     }
 
     /**
