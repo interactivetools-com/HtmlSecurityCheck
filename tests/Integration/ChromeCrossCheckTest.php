@@ -3,11 +3,10 @@ declare(strict_types=1);
 
 namespace Itools\HtmlSecurityCheck\Tests\Integration;
 
-use FilesystemIterator;
 use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
+use Itools\HtmlSecurityCheck\Tests\Support\ChromeCrossCheck;
+use Itools\HtmlSecurityCheck\Tests\Support\CssFuzzer;
 use Itools\HtmlSecurityCheck\Tests\Support\HtmlSecurityCheckTestCase;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
 
 /**
  * A second opinion from a real browser: every fragment the check accepts is parsed by Chrome, and
@@ -18,57 +17,64 @@ use RecursiveIteratorIterator;
  * own tokenizer's tokens and our own CSS scans; this is the test that fails the day either reads
  * something differently from Blink.
  *
- * One headless Chrome run does it all: the fragments (the accept and tinymce4 fixtures, the html5lib
- * tokenizer inputs, and the corpus when it is present) go into tests/Support/chrome-cross-check.html
- * as JSON, the page parses each with DOMParser and walks the tree, and the dumped DOM carries the
- * findings back. A DOMParser document has scripting off, so <noscript> content is parsed as markup,
- * and the walk enters <template> content: neither hides anything from it.
+ * One headless Chrome run per test does it all (tests/Support/ChromeCrossCheck.php): the fragments
+ * go into tests/Support/chrome-cross-check.html as JSON, the page parses each with DOMParser and
+ * walks the tree, and the dumped DOM carries the findings back. A DOMParser document has scripting
+ * off, so <noscript> content is parsed as markup, and the walk enters <template> content: neither
+ * hides anything from it. Canaries go through the same page, so a page that stopped finding
+ * anything fails too.
  *
- * Canaries go through the same page, one for each thing it looks for, and each must be flagged, so
- * a page that stopped finding anything fails too.
+ * The fragments are the accept and tinymce4 fixtures, the html5lib tokenizer inputs and the corpus
+ * when it is present, and in a second test CssFuzzer's random CSS from a fixed seed, so a failure
+ * there repeats on every run. tools/css-fuzz.php runs the same fuzzer for hours with new seeds.
  *
  * Chrome is found through CHROME_PATH, the usual names on PATH, or the install locations. In CI
- * the test runs on the Linux jobs only, and fails there without Chrome except on ARM, where Google
- * ships none. Elsewhere it skips when Chrome is missing.
+ * the tests run on the Linux jobs only, and fail there without Chrome except on ARM, where Google
+ * ships none. Elsewhere they skip when Chrome is missing.
  */
 final class ChromeCrossCheckTest extends HtmlSecurityCheckTestCase
 {
     private const FIXTURES = __DIR__ . '/../Support/fixtures';
     private const CORPUS   = __DIR__ . '/../../corpus';
-    private const HARNESS  = __DIR__ . '/../Support/chrome-cross-check.html';
 
-    // a <script>, an on* attribute and a javascript: URL behind an entity: one reject fixture per finding the page reports
-    private const CANARIES = ['element-not-allowed-1.html', 'event-handler-1.html', 'url-scheme-not-allowed-1.html'];
-
-    // one CSS canary per thing the page looks for in the CSS Chrome parsed
-    private const CSS_CANARIES = [
-        'canary css selector'      => '<style>[title^=a]{color:red}</style>',
-        'canary css at-rule'       => '<style>@import url(x.css);</style>',
-        'canary css unicode-range' => '<style>@font-face{font-family:f;src:url(f.woff);unicode-range:U+61}</style>',
-        'canary css function'      => '<p style="background:image-set(url(a.png) 1x)">x</p>',
-        'canary css url scheme'    => '<p style="background:url(data:image/png;base64,AAAA)">x</p>',
-    ];
-
-    // the attributes [attr^=], [attr$=] and [attr*=] may test, as the check's CSS_FORBIDDEN pattern lists them
-    private const PREFIX_SELECTOR_ATTRIBUTES = ['style', 'src', 'class'];
-
-    private const CHROME_NAMES = ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser'];
-
-    // where Chrome installs when it is not on PATH: macOS, Windows, and Windows as seen from WSL
-    private const CHROME_PATHS = [
-        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-        'C:\Program Files\Google\Chrome\Application\chrome.exe',
-        'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
-        '/mnt/c/Program Files/Google/Chrome/Application/chrome.exe',
-        '/mnt/c/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-    ];
+    // the fuzz run: about 5,200 accepted fragments, under 4 seconds
+    private const FUZZ_SEED    = 1;
+    private const FUZZ_SAMPLES = 50000;
 
     public function testChromeFindsNoScriptOrRefusedCssInAcceptedContent(): void
+    {
+        $chrome   = $this->chrome();
+        $accepted = self::acceptedContent();
+        $this->assertGreaterThan(1000, count($accepted));
+        $this->assertSame([], ChromeCrossCheck::findings($chrome, $accepted), 'Chrome found script or refused CSS in content the check accepted');
+    }
+
+    public function testChromeFindsNoRefusedCssInFuzzedCssTheCheckAccepts(): void
+    {
+        $chrome   = $this->chrome();
+        $accepted = [];
+        foreach (CssFuzzer::fragments(self::FUZZ_SEED, self::FUZZ_SAMPLES) as $id => $html) {
+            if (HtmlSecurityCheck::check($html)->ok) {
+                $accepted["css fuzz #$id"] = $html;
+            }
+        }
+        $this->assertGreaterThan(1000, count($accepted));
+        $failures = [];
+        foreach (array_slice(ChromeCrossCheck::findings($chrome, $accepted), 0, 20) as $name => $findings) {
+            $failures[$accepted[$name]] = $findings;
+        }
+        $this->assertSame([], $failures, 'Chrome found CSS the check refuses in fuzzed CSS the check accepted (first 20)');
+    }
+
+    /**
+     * The Chrome binary; skips the test, or fails it in CI on a platform Google ships Chrome for, when there is none
+     */
+    private function chrome(): string
     {
         if (getenv('CI') && PHP_OS_FAMILY !== 'Linux') {
             $this->markTestSkipped('runs on the Linux CI jobs only: Chrome parses the same on every platform');
         }
-        $chrome = self::chrome();
+        $chrome = ChromeCrossCheck::find();
         if ($chrome === null) {
             $message           = 'Chrome not found: install it or set CHROME_PATH to run the browser cross-check';
             $platformHasChrome = PHP_OS_FAMILY !== 'Linux' || php_uname('m') !== 'aarch64';   // Google ships no Chrome for Linux on ARM
@@ -77,56 +83,7 @@ final class ChromeCrossCheckTest extends HtmlSecurityCheckTestCase
             }
             $this->markTestSkipped($message);
         }
-        $accepted = self::acceptedContent();
-        $this->assertGreaterThan(1000, count($accepted));
-        $canaries = self::CSS_CANARIES;
-        foreach (self::CANARIES as $file) {
-            $canaries["canary $file"] = file_get_contents(self::FIXTURES . "/reject/$file");
-        }
-        $result = $this->runInChrome($chrome, $accepted + $canaries);
-
-        $this->assertSame(count($accepted) + count($canaries), $result['checked']);
-        $flagged = [];
-        foreach ($result['found'] as $finding) {
-            $flagged[strstr($finding, ': ', true)][] = $finding;   // each finding is "case name: what was found"
-        }
-        $this->assertSame([], array_keys(array_diff_key($canaries, $flagged)), 'the page no longer flags these known payloads');
-        $this->assertSame([], array_diff_key($flagged, $canaries), 'Chrome found script or refused CSS in content the check accepted');
-    }
-
-    /**
-     * Run the harness page on the cases in one headless Chrome, with a fresh profile so it never
-     * attaches to a browser that is already open
-     *
-     * @param array<string, string> $cases
-     * @return array{checked: int, found: string[]}
-     */
-    private function runInChrome(string $chrome, array $cases): array
-    {
-        $dir = sys_get_temp_dir() . '/htmlcheck-chrome-' . bin2hex(random_bytes(4));
-        mkdir($dir);
-        $page = "$dir/cross-check.html";
-        $css = [
-            'atRules'          => HtmlSecurityCheck::CSS_AT_RULES,
-            'functions'        => HtmlSecurityCheck::CSS_FUNCTIONS,
-            'urlSchemes'       => HtmlSecurityCheck::CSS_URL_SCHEMES,
-            'prefixAttributes' => self::PREFIX_SELECTOR_ATTRIBUTES,
-        ];
-        file_put_contents($page, strtr(file_get_contents(self::HARNESS), ['__CASES__' => self::json($cases), '__CSS__' => self::json($css)]));
-        try {
-            [$dom, , $exit] = $this->runCommand([
-                $chrome, '--headless', '--disable-gpu', '--no-sandbox', '--no-first-run',
-                '--user-data-dir=' . self::pathForChrome($chrome, "$dir/profile"),
-                '--dump-dom', self::pathForChrome($chrome, $page),
-            ]);
-        } finally {
-            self::removeDir($dir);
-        }
-        $this->assertSame(0, $exit, 'Chrome did not exit cleanly');
-        $this->assertSame(1, preg_match('~<pre id="out">([^<]*)</pre>~', $dom, $match), 'no result in the dumped DOM');
-        $result = json_decode(html_entity_decode($match[1], ENT_QUOTES | ENT_HTML5), true);
-        $this->assertIsArray($result, 'the harness page did not run: ' . $match[1]);
-        return $result;
+        return $chrome;
     }
 
     /**
@@ -158,55 +115,5 @@ final class ChromeCrossCheckTest extends HtmlSecurityCheckTestCase
             }
         }
         return array_filter($content, fn(string $html) => HtmlSecurityCheck::check($html)->ok);
-    }
-
-    /**
-     * The cases as JSON with no < > or & in it, so a </script> inside a case cannot end the script block
-     */
-    private static function json(array $cases): string
-    {
-        return json_encode($cases, JSON_HEX_TAG | JSON_HEX_AMP | JSON_THROW_ON_ERROR);
-    }
-
-    /**
-     * The Chrome binary, or null when none is found
-     */
-    private static function chrome(): ?string
-    {
-        $candidates = [getenv('CHROME_PATH') ?: ''];
-        foreach (explode(PATH_SEPARATOR, (string)getenv('PATH')) as $dir) {
-            foreach (self::CHROME_NAMES as $name) {
-                $candidates[] = "$dir/$name";
-            }
-        }
-        foreach ([...$candidates, ...self::CHROME_PATHS] as $path) {
-            if ($path !== '' && is_file($path)) {
-                return $path;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * The path as Chrome will read it: a Windows path when a Windows Chrome runs from WSL
-     */
-    private static function pathForChrome(string $chrome, string $path): string
-    {
-        if (PHP_OS_FAMILY === 'Linux' && str_ends_with($chrome, '.exe')) {
-            return trim((string)shell_exec('wslpath -w ' . escapeshellarg($path)));
-        }
-        return $path;
-    }
-
-    /**
-     * Delete the page and the Chrome profile, which is a few MB per run
-     */
-    private static function removeDir(string $dir): void
-    {
-        $paths = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
-        foreach ($paths as $path => $info) {
-            $info->isDir() && !$info->isLink() ? @rmdir($path) : @unlink($path);
-        }
-        @rmdir($dir);
     }
 }
