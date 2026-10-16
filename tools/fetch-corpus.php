@@ -268,14 +268,15 @@ function fetchSource(string $name, array $source, string $dir): void
         file_put_contents("$dir/$file", $html);
         $index[$file] = ['title' => $title, 'expect' => $expect];
     }
-    file_put_contents("$dir/cases.json", json_encode($index, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n");
+    // a title with bytes that aren't UTF-8 gets U+FFFD for them, so the index always writes and tally.php always has every case's expect
+    file_put_contents("$dir/cases.json", json_encode($index, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR) . "\n");
     file_put_contents("$dir/SOURCE.json", json_encode([
         'license' => $source['spdx'],
         'expect'  => $source['expect'],
         'fetched' => date('c'),
         'files'   => count($cases),
         ...$version,
-    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
 }
 
 //region Extractors: each returns a list of [title, html, expect or null for the source default]

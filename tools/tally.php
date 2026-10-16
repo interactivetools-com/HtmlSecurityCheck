@@ -77,8 +77,8 @@ $open          = [];   // "source: reason" => files, for rules marked open
 
 foreach ($sources as $name) {
     $dir       = CORPUS_DIR . "/$name";
-    $expect    = is_file("$dir/SOURCE.json") ? json_decode(file_get_contents("$dir/SOURCE.json"), true)['expect'] : 'accept';
-    $cases     = is_file("$dir/cases.json") ? json_decode(file_get_contents("$dir/cases.json"), true) : [];   // file => [title, expect]
+    $expect    = is_file("$dir/SOURCE.json") ? json_decode(file_get_contents("$dir/SOURCE.json"), true, 512, JSON_THROW_ON_ERROR)['expect'] : 'accept';
+    $cases     = is_file("$dir/cases.json") ? json_decode(file_get_contents("$dir/cases.json"), true, 512, JSON_THROW_ON_ERROR) : [];   // file => [title, expect]
     $knownHere = $known[$name]['cases'] ?? [];     // hash => [payload excerpt, reason]; PortSwigger entries have no excerpt
     $rules     = $known[$name]['rejects'] ?? [];   // [code, detail regex, reason]
     $knownUsed = [];                    // hash => true, for the stale report
