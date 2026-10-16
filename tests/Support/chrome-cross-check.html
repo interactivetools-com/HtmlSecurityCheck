@@ -20,7 +20,8 @@ const found = [];
 // custom property (--x) keeps its value as written: single quotes, comments and unclosed strings included. A hex
 // escape eats one whitespace after it, so "\a<newline> does not end the string.
 const STRINGS_AND_COMMENTS = /(?<![\w\u0080-\uffff#@-])url\((?!\s*["'])[^)]*\)?|\/\*[\s\S]*?(?:\*\/|$)|"(?:[^"\\\n]|\\(?:[0-9a-f]{1,6}[ \t\n]?|[\s\S]))*(?:"|\n|$)|'(?:[^'\\\n]|\\(?:[0-9a-f]{1,6}[ \t\n]?|[\s\S]))*(?:'|\n|$)/gi;
-const codeOf = text => text.replace(STRINGS_AND_COMMENTS, match => /^url\(/i.test(match) ? match : '""');
+// CR, CRLF and form feed are one newline to CSS, and a custom property keeps them as written
+const codeOf = text => text.replace(/\r\n?|\f/g, '\n').replace(STRINGS_AND_COMMENTS, match => /^url\(/i.test(match) ? match : '""');
 const checkFunctionsAndUrls = (text, name, where) => {
     const code = codeOf(text);
     // a function name and its (, :not( and image-set( alike; after # or @ it is a hash or at-rule and then a ( block
