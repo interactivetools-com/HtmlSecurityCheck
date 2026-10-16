@@ -407,6 +407,14 @@ form or the API before the check.
   before the check was never checked. A check costs under 0.04 ms for a typical page, so
   checking on every view is fine. To show staff a rejected record, print it in
   `<iframe sandbox srcdoc="<?= htmlspecialchars($html) ?>"></iframe>`.
+- **Visitor posts need a sanitizer first.** A rejection works for staff who can fix the HTML,
+  not for a visitor writing a forum post or comment. Run that HTML through a sanitizer such as
+  HTMLPurifier, then run HTMLPurifier's output through `check()` before saving it. On the test
+  pages, HTMLPurifier's output passes except for `news:` links and `alt`, `title` or `class`
+  values that start with `javascript:`.
+- **Add a Content Security Policy as a backup.** On pages that show content from visitors,
+  emails or imports, send `Content-Security-Policy: script-src 'self'; object-src 'none';
+  base-uri 'none'`, so script that gets past a rule still doesn't run.
 - **Switches are process-wide.** They are static properties, so a change in one request
   handler affects every later `check()` in the same process. Set them once in a file every
   entry point includes, so the save and the page that prints agree. Add a host with
