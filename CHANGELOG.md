@@ -2,7 +2,9 @@
 
 > Tagged releases roll up every change since the previous tag. Versions bundled
 > with CMS Builder are marked on their sections. Error codes are never renamed
-> once released; message wording can change, so match on the code.
+> once released; message wording can change, so match on the code. A patch
+> release can refuse content an earlier one accepted, when a rule gets stricter
+> to close a gap.
 
 ## [1.0.0] - 2026-10-16
 
