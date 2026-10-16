@@ -732,6 +732,13 @@ Starting from known tricks is what makes it find anything: uniform random string
 pieces found nothing even in code with a known hole, since that hole needs about eight pieces
 in one order.
 
+A third test is exhaustive instead of random: `CssCharacterGrid` puts every ASCII character,
+the Latin-1 range and the Unicode spaces and lookalikes at every spot where the check's
+regexes and CSS could disagree about a character (the end of a string, after `url(`, inside
+a name), raw and as character references, about 140,000 cases in 12 seconds. Its cases never
+change, so it finds nothing new on unchanged code; it is there for the day the CSS scans do
+change.
+
 Chrome, not a PHP parser, because a browser is the thing the check protects against: a
 script Chrome does not see is not a script. PHP 8.4's `Dom\HTMLDocument` (Lexbor) was the
 earlier plan and needs nothing installed, but Chrome is on every CI runner except Linux on

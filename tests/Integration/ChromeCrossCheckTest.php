@@ -5,6 +5,7 @@ namespace Itools\HtmlSecurityCheck\Tests\Integration;
 
 use Itools\HtmlSecurityCheck\HtmlSecurityCheck;
 use Itools\HtmlSecurityCheck\Tests\Support\ChromeCrossCheck;
+use Itools\HtmlSecurityCheck\Tests\Support\CssCharacterGrid;
 use Itools\HtmlSecurityCheck\Tests\Support\CssFuzzer;
 use Itools\HtmlSecurityCheck\Tests\Support\HtmlSecurityCheckTestCase;
 
@@ -26,7 +27,9 @@ use Itools\HtmlSecurityCheck\Tests\Support\HtmlSecurityCheckTestCase;
  *
  * The fragments are the accept and tinymce4 fixtures, the html5lib tokenizer inputs and the corpus
  * when it is present, and in a second test CssFuzzer's random CSS from a fixed seed, so a failure
- * there repeats on every run. tools/css-fuzz.php runs the same fuzzer for hours with new seeds.
+ * there repeats on every run. tools/css-fuzz.php runs the same fuzzer for hours with new seeds. A
+ * third test runs CssCharacterGrid: every character at every spot where the check's CSS scans and
+ * a browser could read a character differently.
  *
  * Chrome is found through CHROME_PATH, the usual names on PATH, or the install locations. In CI
  * the tests run on the Linux jobs only, and fail there without Chrome except on ARM, where Google
@@ -64,6 +67,18 @@ final class ChromeCrossCheckTest extends HtmlSecurityCheckTestCase
             $failures[$accepted[$name]] = $findings;
         }
         $this->assertSame([], $failures, 'Chrome found CSS the check refuses in fuzzed CSS the check accepted (first 20)');
+    }
+
+    public function testChromeFindsNoRefusedCssWithAnyCharacterInAnyPosition(): void
+    {
+        $chrome   = $this->chrome();
+        $accepted = array_filter(CssCharacterGrid::fragments(), fn(string $html) => HtmlSecurityCheck::check($html)->ok);
+        $this->assertGreaterThan(1000, count($accepted));
+        $failures = [];
+        foreach (array_slice(ChromeCrossCheck::findings($chrome, $accepted), 0, 20) as $name => $findings) {
+            $failures[$accepted[$name]] = $findings;
+        }
+        $this->assertSame([], $failures, 'Chrome found CSS the check refuses where the character grid put a character (first 20)');
     }
 
     /**
