@@ -673,6 +673,26 @@ page as JSON, the page parses each with `DOMParser` and walks the tree, and `--d
 carries the findings back. A `DOMParser` document has scripting off, so `<noscript>` content
 is parsed as markup, and the walk enters `<template>` content, so neither hides anything.
 
+The same page reads back the CSS Chrome parsed from each `<style>` and `style` attribute,
+through its stylesheet objects, and flags what the check refuses: an at-rule or function off
+its allowlist, a `url()` scheme other than `http` or `https`, an `[attr^=]`, `[attr$=]` or
+`[attr*=]` selector, and `unicode-range`. Reading the parsed rules finds CSS the check misread
+anywhere in a block, not only where a test put a marker.
+
+Real content seldom holds the tricks that make a CSS scan misread a block, so a second test
+feeds the page random CSS: `CssFuzzer` takes known ways to hide CSS from a scanner, makes one
+to four random edits to each, and puts a marker the check refuses next to it. The seed is
+fixed, so the test is the same on every run and a failure repeats. `tools/css-fuzz.php` runs
+the same fuzzer for minutes or hours with new seeds, before a release or after a CSS rule
+change, from a terminal or from the manual CSS fuzz workflow in GitHub Actions. It renders
+what Chrome flags in a page served through a request logger, so the report shows whether a
+fragment sent a request or matched the page's own attribute. A fragment it finds is
+shortened, gets a test, and goes in `CssFuzzer::SEEDS`.
+
+Starting from known tricks is what makes it find anything: uniform random strings of CSS
+pieces found nothing even in code with a known hole, since that hole needs about eight pieces
+in one order.
+
 Chrome, not a PHP parser, because a browser is the thing the check protects against: a
 script Chrome does not see is not a script. PHP 8.4's `Dom\HTMLDocument` (Lexbor) was the
 earlier plan and needs nothing installed, but Chrome is on every CI runner except Linux on
