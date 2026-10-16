@@ -270,6 +270,29 @@ final class CssTest extends HtmlSecurityCheckTestCase
     }
 
     /**
+     * CR, CRLF and form feed end a CSS string like a newline does, and only CSS whitespace (space, tab,
+     * newline) can come between url( and a quote. A style attribute can bring CR, FF and vertical tab in
+     * from character references, and what follows must still be checked
+     */
+    #[DataProvider('newlineFromReferenceProvider')]
+    public function testNewlinesFromCharacterReferencesEndAString(string $style, string $detail): void
+    {
+        $this->assertRejects("<p style=\"$style\">x</p>", 'css-not-allowed', $detail);
+    }
+
+    public static function newlineFromReferenceProvider(): array
+    {
+        return [
+            'CR ends a string'           => ["'&#13;;background:image-set(url(x.png) 1x)", 'image-set('],
+            'FF ends a string'           => ["'&#12;;background:image-set(url(x.png) 1x)", 'image-set('],
+            'CRLF ends a string'         => ["'&#13;&#10;;background:image-set(url(x.png) 1x)", 'image-set('],
+            'CR before an escape'        => ["'&#13;;background:url(\\64 ata:,x)", '\\'],
+            'CRLF after a hex escape'    => ["'\\a&#13;&#10;';background:image-set(url(x.png) 1x)", 'image-set('],   // the escape eats the pair, so the ' closes the string
+            'vertical tab after url('    => ["background:url(&#11;');background:url(\\6a avascript:x)", '\\'],   // a bad URL to a browser, which runs to the ), not a string
+        ];
+    }
+
+    /**
      * A run of [ costs one step per bracket: the selector's name run stops at the next [ instead of
      * scanning to the end of the block from every one (100K brackets took 3 s with the JIT, 64 s without)
      */

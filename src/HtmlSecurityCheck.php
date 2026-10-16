@@ -6,7 +6,7 @@ namespace Itools\HtmlSecurityCheck;
 use RuntimeException;
 
 // import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
-use function addcslashes, array_diff, array_intersect, array_map, array_values, count, implode, in_array, max, preg_grep, preg_last_error_msg, preg_match, preg_match_all, preg_quote, preg_replace, preg_split, str_replace, str_starts_with, stripos, strlen, strncasecmp, strpos, strtolower, substr, trim;
+use function addcslashes, array_diff, array_intersect, array_map, array_values, count, implode, in_array, max, preg_grep, preg_last_error_msg, preg_match, preg_match_all, preg_quote, preg_replace, preg_split, str_replace, str_starts_with, stripos, strlen, strncasecmp, strpos, strtolower, strtr, substr, trim;
 
 use const PREG_OFFSET_CAPTURE, PREG_SPLIT_NO_EMPTY;
 
@@ -200,8 +200,10 @@ final class HtmlSecurityCheck
     // to its ) and is stepped over, since /* or a quote inside one is part of the URL, not the start of a
     // comment or string. It is a URL only where url( starts a name: 1url(, #url( and éurl( are a number, a
     // hash or a longer name and then a ( block, where a comment is a comment. No banned token, function or
-    // at-rule can be spelled inside a comment or string, so both are removed
-    private const CSS_COMMENT_OR_STRING = '/(?<![\w\x80-\xFF#@-])(?i:url)\(\s*+(?!["\'])(?:[^)\\\\]++|\\\\.)*+\)?+(*SKIP)(*FAIL)|\/\*(?:[^*]++|\*(?!\/))*+(?:\*\/|\z)|"(?:[^"\\\\\n]++|\\\\(?:[0-9a-fA-F]{1,6}[ \t\n]?|.|\z))*+(?:"|\n|\z)|\'(?:[^\'\\\\\n]++|\\\\(?:[0-9a-fA-F]{1,6}[ \t\n]?|.|\z))*+(?:\'|\n|\z)/s';
+    // at-rule can be spelled inside a comment or string, so both are removed. The whitespace after url( is
+    // CSS whitespace (space, tab, newline), not \s: after url(<VT> a browser reads a bad URL up to the ),
+    // not a string
+    private const CSS_COMMENT_OR_STRING = '/(?<![\w\x80-\xFF#@-])(?i:url)\([ \t\n]*+(?!["\'])(?:[^)\\\\]++|\\\\.)*+\)?+(*SKIP)(*FAIL)|\/\*(?:[^*]++|\*(?!\/))*+(?:\*\/|\z)|"(?:[^"\\\\\n]++|\\\\(?:[0-9a-fA-F]{1,6}[ \t\n]?|.|\z))*+(?:"|\n|\z)|\'(?:[^\'\\\\\n]++|\\\\(?:[0-9a-fA-F]{1,6}[ \t\n]?|.|\z))*+(?:\'|\n|\z)/s';
 
     // CSS the name allowlists cannot catch: backslash escapes (\6a avascript, and an escape could spell any name),
     // IE behavior: or -ms-behavior: (as the property name, so scroll-behavior passes) and Firefox -moz-binding,
@@ -225,13 +227,13 @@ final class HtmlSecurityCheck
     private const CSS_AT_RULE = '/(?<![\w\x80-\xFF#@-])url\([^)]*+(*SKIP)(*FAIL)|@(-?+[a-z_][\w-]*+)/i';
 
     // a backslash inside a quoted url() argument: an escape there still spells a scheme, url("\6a avascript:")
-    private const CSS_URL_ESCAPE = '/url\(\s*+["\'][^"\')\\\\]*+\\\\/i';
+    private const CSS_URL_ESCAPE = '/url\([ \t\n]*+["\'][^"\')\\\\]*+\\\\/i';
 
     // every url( in CSS, capturing a quoted argument up to its closing quote, whitespace included, since the
     // scheme is read with tabs and newlines dropped (url("java\tscript:")), and an unquoted one up to the paren or whitespace.
     // The argument is read in a lookahead, so the next match starts right after url( and every url( gets its own: a
     // url( in a comment or string cannot take the real url() after it as its argument
-    private const CSS_URL = '/url\(\s*+(?=(?|"([^"]*+)|\'([^\']*+)|([^"\')\s]*+)))/i';
+    private const CSS_URL = '/url\([ \t\n]*+(?=(?|"([^"]*+)|\'([^\']*+)|([^"\')\s]*+)))/i';
 
     // the longest run of well-formed UTF-8 from the start; the byte after the match is the first bad one
     private const UTF8_PREFIX = '/\A(?:[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2})*+/';
@@ -642,6 +644,10 @@ final class HtmlSecurityCheck
 
     private function checkCss(string $css): void
     {
+        // CR, CRLF and form feed are newlines to CSS, which turns each into one \n before it reads anything, so a
+        // string ends there. Only a style attribute can bring them here, from &#13; and &#12;
+        $css = strtr(str_replace("\r\n", "\n", $css), "\r\f", "\n\n");
+
         // comments and strings are removed, not blanked to a space: the CSS tokenizer drops a comment without leaving
         // whitespace, so [*/**/|x^=a] reads [*|x^=a] to a browser, and joining the text around a string can only add a
         // match. Past a PCRE limit (megabytes inside one comment or string) the comments are still in the text and could
