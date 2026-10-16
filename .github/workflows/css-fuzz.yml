@@ -1,0 +1,56 @@
+name: CSS fuzz
+
+# The long run of tools/css-fuzz.php, started by hand from the Actions tab before a release or after a
+# CSS rule change. Each job fuzzes from its own random seed for the minutes given, printing every
+# fragment Chrome flags as its batch finishes, and fails when anything was flagged. GitHub stops a
+# hosted job at 6 hours, so 340 minutes is the most that leaves time for setup.
+on:
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: 'Minutes per job (at most 340)'
+        required: true
+        default: 60
+        type: number
+      jobs:
+        description: 'Jobs at once, each from its own random seed'
+        required: true
+        default: '1'
+        type: choice
+        options: ['1', '2', '5', '10', '20']
+
+# the jobs only read the code
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: CSS fuzz ${{ matrix.job }}
+    runs-on: ubuntu-latest   # has Chrome installed
+    timeout-minutes: 360
+
+    strategy:
+      fail-fast: false
+      matrix:
+        job: ${{ fromJSON('{"1":[1],"2":[1,2],"5":[1,2,3,4,5],"10":[1,2,3,4,5,6,7,8,9,10],"20":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]}')[inputs.jobs] }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false  # no step uses git with the token, so don't leave it in .git/config
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        timeout-minutes: 5
+        with:
+          php-version: '8.5'
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Fuzz
+        env:
+          MINUTES: ${{ inputs.minutes }}
+        run: php tools/css-fuzz.php --minutes="$MINUTES"
