@@ -520,9 +520,17 @@ Also settled 2026-09-20: `behavior:` matches only as a property name, so `scroll
 and `overscroll-behavior` pass. The `*behavior` and `_behavior` hacks old IE read still
 reject.
 
-Rejected: a full CSS tokenizer (MediaWiki runs one; the backslash ban plus the removal makes
-it unnecessary), and refusing `position: fixed` and `z-index` (a phishing overlay, not script,
-and in every email template).
+Rejected: refusing `position: fixed` and `z-index` (a phishing overlay, not script, and in
+every email template).
+
+A CSS tokenizer that follows the CSS Syntax spec is planned for after 1.0, possibly shared
+with SvgSecurityCheck. For 1.0 the backslash ban plus the removal stood in for one (MediaWiki
+runs a full tokenizer), but every CSS bug found before the release came from the regexes
+deciding where a comment, a string or a `url(` ends: a comment past the PCRE limit, `url(`
+after a name or number, a string that ends in a lone `\`, a `url(` inside a comment, CR and FF
+from `&#13;` and `&#12;`, names joined across a removed comment, and repeated `url(` using
+quadratic memory. A tokenizer reads each of those as a browser does, by following the same
+states, the way the HTML side already does.
 
 ## `<style>` Is Allowed
 
