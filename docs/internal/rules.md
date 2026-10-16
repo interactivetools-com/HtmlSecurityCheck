@@ -201,7 +201,9 @@ strings are removed first (see below), then three checks run, case-insensitive:
    with the `url(` and its target as the detail. This check reads the text as written, comments
    and strings included, so a quoted target is still checked, and each `url(` is read on its
    own, so in `/*url(*/background:url(javascript:x)` the `url(` in the comment cannot take the
-   real `url()` after it as its argument. A backslash inside a quoted `url()` argument also
+   real `url()` after it as its argument. An unquoted argument is read up to the first `(`,
+   `)`, quote or whitespace, so `url(javascript:alert(1))` reports `url(javascript:alert)`
+   and a run of `url(url(url(` reads each argument only up to the next `url(`. A backslash inside a quoted `url()` argument also
    rejects, since an escape there still spells a scheme: `url('\6a avascript:x')` reports
    `url('\`.
 

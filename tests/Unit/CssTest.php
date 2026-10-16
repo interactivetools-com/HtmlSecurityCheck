@@ -106,7 +106,7 @@ final class CssTest extends HtmlSecurityCheckTestCase
             'javascript url spaced' => ['background: url( javascript:x )', 'url(javascript:x)'],
             'tab in a quoted url'   => ["background: url('java\tscript:x')", 'url(java\tscript:x)'],   // a browser drops the tab when it reads the URL
             'newline in quoted url' => ["background: url('java\nscript:x')", 'url(java\nscript:x)'],
-            'url with parens'       => ['background: url(javascript:alert(1))', 'url(javascript:alert(1)'],   // an unquoted url() ends at the first ), as in CSS
+            'url with parens'       => ['background: url(javascript:alert(1))', 'url(javascript:alert)'],   // an unquoted argument ends at the first ( or )
             'data url'              => ['background: url(data:image/svg+xml,<svg/>)', 'url(data:image/svg+xml,<svg/>)'],
             'vbscript url'          => ['background: url(vbscript:x)', 'url(vbscript:x)'],
             'unknown scheme url'    => ['background: url(ftp://example.com/x.png)', 'url(ftp://example.com/x.png)'],
@@ -303,6 +303,19 @@ final class CssTest extends HtmlSecurityCheckTestCase
         $escapedQuotes = str_repeat('\\"', 128 * 1024);
         $this->assertAccepts("<style>a{x:\"$escapedQuotes\\</style>");
         $this->assertAccepts("<p style=\"x:'" . str_repeat("\\'", 128 * 1024) . "\\\">x</p>");
+    }
+
+    /**
+     * Each url( argument is read up to the next ( when unquoted, so a run of url(url(url( reads each
+     * one once (64 KB of them in a comment took 546 MB when every argument ran to the end)
+     */
+    public function testRepeatedUrlOpenersStayLinear(): void
+    {
+        $openers = str_repeat('url(', 256 * 1024);
+        $this->assertAccepts("<style>/*$openers*/</style>");
+        $this->assertAccepts("<p style=\"/*$openers*/\">x</p>");
+        $this->assertAccepts("<style>a{b:'" . str_repeat("url('", 256 * 1024) . "'}</style>");
+        $this->assertAccepts("<style>a{b:\"" . str_repeat('url("', 256 * 1024) . "\"}</style>");
     }
 
     /**

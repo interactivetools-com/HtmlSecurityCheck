@@ -234,10 +234,12 @@ final class HtmlSecurityCheck
     private const CSS_URL_ESCAPE = '/url\([ \t\n]*+["\'][^"\')\\\\]*+\\\\/i';
 
     // every url( in CSS, capturing a quoted argument up to its closing quote, whitespace included, since the
-    // scheme is read with tabs and newlines dropped (url("java\tscript:")), and an unquoted one up to the paren or whitespace.
+    // scheme is read with tabs and newlines dropped (url("java\tscript:")), and an unquoted one up to a paren or whitespace.
     // The argument is read in a lookahead, so the next match starts right after url( and every url( gets its own: a
-    // url( in a comment or string cannot take the real url() after it as its argument
-    private const CSS_URL = '/url\([ \t\n]*+(?=(?|"([^"]*+)|\'([^\']*+)|([^"\')\s]*+)))/i';
+    // url( in a comment or string cannot take the real url() after it as its argument. An unquoted argument stops at
+    // a ( too, where a browser reads a bad URL, so in url(url(url( each argument ends at the next url( instead of
+    // running to the end of the CSS
+    private const CSS_URL = '/url\([ \t\n]*+(?=(?|"([^"]*+)|\'([^\']*+)|([^"\'()\s]*+)))/i';
 
     // a Windows path, read with whitespace and controls dropped: \\host, \/host or /\host (a network path, which
     // Windows opens over SMB, sending the user's login to the host; Outlook renders mail with Word, not a browser),
