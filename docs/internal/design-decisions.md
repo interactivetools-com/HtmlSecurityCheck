@@ -561,6 +561,25 @@ Defaults: forms off (a fake login form is the one non-script attack a staff memb
 likely to try), styles on (Word pastes and email HTML), embeds on (video embeds are in nearly
 every site's content).
 
+## The Check Runs Under the C Locale
+
+PCRE reads letter case from `LC_CTYPE`. Under a Turkish or Azeri locale (`tr_TR`, `az_AZ`,
+`crh_UA`, `ku_TR`) `/i` no longer matches `I` to `i`, so every rule written in lowercase
+missed a capital I: `<IMG onerror>`, `javascrIpt:`, `<IFRAME>` on any host, `@Import`. A
+site that calls `setlocale(LC_ALL, 'tr_TR.UTF-8')` for its dates and numbers would have
+turned the check off for those.
+
+`check()` switches `LC_CTYPE` to `C` when PCRE reads letter case, `\w` or `\s` differently
+under the caller's locale, and puts it back after. Whether a locale does is tested once per
+locale per process by running those three classes over all 256 byte values; `C.UTF-8` and
+`en_US.UTF-8` read like `C`, so most sites never switch and pay only the 0.09 µs it takes to
+read the current locale. A switch and back adds about 0.9 µs to a 3.8 µs short check.
+Rejected: rewriting every pattern without `/i` (`[iI]` for each letter, hard to read and
+easy to miss one), and refusing to run under such a locale (the site did nothing wrong). The
+tokenizer and the character reference decoder were already ASCII-only for the same reason.
+`setlocale()` is per process, except in thread-safe Windows builds, where PHP gives each
+request's thread its own locale; the switch happens only on a site that changed the locale.
+
 ## `data:` Images Pass on `<img src>`
 
 `data:image/...` on `<img src>` passes, any image type, `svg+xml` included. A browser decodes

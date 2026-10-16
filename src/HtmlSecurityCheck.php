@@ -6,9 +6,9 @@ namespace Itools\HtmlSecurityCheck;
 use RuntimeException;
 
 // import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
-use function addcslashes, array_diff, array_intersect, array_map, array_values, count, implode, in_array, max, preg_grep, preg_last_error_msg, preg_match, preg_match_all, preg_quote, preg_replace, preg_split, str_replace, str_starts_with, stripos, strlen, strncasecmp, strpos, strtolower, strtr, substr, trim;
+use function addcslashes, array_diff, array_intersect, array_map, array_values, chr, count, implode, in_array, max, preg_grep, preg_last_error_msg, preg_match, preg_match_all, preg_quote, preg_replace, preg_split, range, setlocale, str_replace, str_starts_with, stripos, strlen, strncasecmp, strpos, strtolower, strtr, substr, trim;
 
-use const PREG_OFFSET_CAPTURE, PREG_SPLIT_NO_EMPTY;
+use const LC_CTYPE, PREG_OFFSET_CAPTURE, PREG_SPLIT_NO_EMPTY;
 
 /**
  * Checks rich-text HTML for anything that could run script in a browser and reports every
@@ -279,7 +279,19 @@ final class HtmlSecurityCheck
      */
     public static function check(string $html): Result
     {
-        return (new self())->run($html);
+        // PCRE builds its letter case, \w and \s tables from LC_CTYPE: under a Turkish or Azeri locale /i no longer
+        // matches I to i, so rules written in lowercase would miss ONERROR, javascrIpt: and @Import. Under a locale
+        // that changes those tables the check runs under C and puts the caller's locale back after
+        $locale = setlocale(LC_CTYPE, '0');
+        if ($locale === false || (self::$localeReadsLikeC[$locale] ??= self::pcreReadsLikeC())) {
+            return (new self())->run($html);
+        }
+        setlocale(LC_CTYPE, 'C');
+        try {
+            return (new self())->run($html);
+        } finally {
+            setlocale(LC_CTYPE, $locale);
+        }
     }
 
     /**
@@ -762,6 +774,23 @@ final class HtmlSecurityCheck
             }
         }
         return false;
+    }
+
+    /**
+     * @var array<string, bool> LC_CTYPE values seen in this process, true when PCRE reads bytes under them as under C
+     */
+    private static array $localeReadsLikeC = ['C' => true];
+
+    /**
+     * True when PCRE, under the current LC_CTYPE, reads letter case, \w and \s for all 256 byte values as it does
+     * under C. Most locales do, C.UTF-8 and en_US.UTF-8 included; tr_TR and az_AZ do not
+     */
+    private static function pcreReadsLikeC(): bool
+    {
+        $bytes = implode('', array_map(chr(...), range(0, 255)));
+        return preg_replace('/[^a-z]+/i', '', $bytes) === 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+            && preg_replace('/\W+/', '', $bytes) === '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz'
+            && preg_replace('/\S+/', '', $bytes) === "\t\n\x0B\f\r ";
     }
 
     /**

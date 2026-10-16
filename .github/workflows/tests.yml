@@ -60,6 +60,11 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
 
+      # LocaleTest needs a locale where /i stops matching I to i, and TokenizerTest a single-byte one; both skip without
+      - name: Install Turkish and German locales
+        if: runner.os == 'Linux'
+        run: sudo locale-gen tr_TR.UTF-8 de_DE.ISO-8859-1
+
       - name: Run tests
         run: vendor/bin/phpunit --colors=always
 
