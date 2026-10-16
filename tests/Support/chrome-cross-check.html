@@ -19,11 +19,12 @@ const found = [];
 // url() kept whole since a quote or /* in it is part of the URL. Chrome writes strings with double quotes, but a
 // custom property (--x) keeps its value as written: single quotes, comments and unclosed strings included. A hex
 // escape eats one whitespace after it, so "\a<newline> does not end the string.
-const STRINGS_AND_COMMENTS = /(?<![\w\u0080-\uffff#@-])url\(\s*(?!["'])[^)]*\)?|\/\*[\s\S]*?(?:\*\/|$)|"(?:[^"\\\n]|\\(?:[0-9a-f]{1,6}[ \t\n]?|[\s\S]))*(?:"|\n|$)|'(?:[^'\\\n]|\\(?:[0-9a-f]{1,6}[ \t\n]?|[\s\S]))*(?:'|\n|$)/gi;
+const STRINGS_AND_COMMENTS = /(?<![\w\u0080-\uffff#@-])url\((?!\s*["'])[^)]*\)?|\/\*[\s\S]*?(?:\*\/|$)|"(?:[^"\\\n]|\\(?:[0-9a-f]{1,6}[ \t\n]?|[\s\S]))*(?:"|\n|$)|'(?:[^'\\\n]|\\(?:[0-9a-f]{1,6}[ \t\n]?|[\s\S]))*(?:'|\n|$)/gi;
 const codeOf = text => text.replace(STRINGS_AND_COMMENTS, match => /^url\(/i.test(match) ? match : '""');
 const checkFunctionsAndUrls = (text, name, where) => {
     const code = codeOf(text);
-    for (const [, fn] of code.matchAll(/(?<![\w-])(-*[a-z_][\w-]*)\(/gi)) {   // a function name and its (, :not( and image-set( alike
+    // a function name and its (, :not( and image-set( alike; after # or @ it is a hash or at-rule and then a ( block
+    for (const [, fn] of code.matchAll(/(?<![\w\u0080-\uffff#@-])(-*[a-z_][\w-]*)\(/gi)) {
         if (!css.functions.includes(fn.toLowerCase())) {
             found.push(name + ': ' + fn + '( in ' + where);
         }
