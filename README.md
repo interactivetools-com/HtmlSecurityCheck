@@ -102,8 +102,10 @@ lists can't catch (`\` escapes, `behavior:`, `[value^=`) are rejected on their o
 
 ## Additional Protection
 
-Content that passes is safe to print without these. They add a second layer in case a rule is
-ever bypassed, and cover content the check never saw:
+The check is built to stop script by itself. The three steps below are a backup in case a bug
+or a browser change lets script past a rule, and they also cover content the check never saw.
+Add the Content Security Policy to every page that shows content from visitors, emails or
+imports:
 
 - **A Content Security Policy on pages that show it.** `script-src 'self'; object-src 'none';
   base-uri 'none'` runs your own script files and nothing else. To keep an inline script, add
@@ -119,6 +121,9 @@ ever bypassed, and cover content the check never saw:
 
 - **Visitor posts.** A rejection works for staff who can fix the HTML, not for a visitor who
   can't. Forum posts and comments need a sanitizer such as [HTMLPurifier](https://htmlpurifier.org/).
+  Then run HTMLPurifier's output through HtmlSecurityCheck before saving it, so script gets
+  through only if both miss it. On our test pages, HTMLPurifier's output passes except for
+  `news:` links and `alt`, `title` or `class` values that start with `javascript:`.
 - **Inline SVG or MathML.** Both are rejected with no switch. Upload SVG as a file, check it with
   [SvgSecurityCheck](https://github.com/interactivetools-com/SvgSecurityCheck), and show it with
   `<img src>`.
