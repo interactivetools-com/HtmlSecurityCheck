@@ -179,10 +179,14 @@ strings are removed first (see below), then three checks run, case-insensitive:
    (`[styles^=`, `[srcset*=`, `[data-src*=`).
 2. Every function name must be in `CSS_FUNCTIONS` and every at-rule name in `CSS_AT_RULES`,
    or it rejects with the name as written as the detail: `image-set(`, `expression(`,
-   `-webkit-image-set(`, `cross-fade(`, `@import`, `@layer`. A function name is a whole
-   name before `(` (`x-rotate(` is `x-rotate`, not `rotate`), never one right after `@`
-   (`@media(min-width:720px)` is the at-rule). An unquoted `url()` is skipped, so the `@` in
-   `url(https://cdn.example/logo@2x.png)` and an `(` inside one are part of the URL. The
+   `-webkit-image-set(`, `cross-fade(`, `@import`, `@layer`. A name is read as CSS reads
+   one: `--`, or an optional `-` and then a letter, `_` or non-ASCII character, then any of
+   those, digits and `-`, so `---f(`, `--1f(` and `é(` are functions too. A function name is
+   a whole name before `(` (`x-rotate(` is `x-rotate`, not `rotate`), never one right after
+   `@`, `#` or a number (`@media(min-width:720px)` is the at-rule, `#x(` a hash and a block).
+   An unquoted `url()` is skipped, so the `@` in `url(https://cdn.example/logo@2x.png)` and
+   an `(` inside one are part of the URL; `url("x")` is a function like any other, so in
+   `url('a' image-set(x)` the `image-set(` is read. The
    lists cover what editors, Word pastes, email templates and Wikipedia use: colors,
    gradients, transforms, filters, shapes, `calc()` and `var()`, selectors such as `:not()`,
    and `@font-face`, `@page`, `@list`, `@media`, `@supports`, `@keyframes`, `@charset`.
@@ -226,9 +230,11 @@ like `'\@Yu Mincho'` pass, and `content: '/*'` cannot hide what follows it. An u
 or non-ASCII character (`1url(`, `#url(`) it is part of a number, hash or longer name
 followed by a `(` block, and a comment inside it is a comment. Only space, tab and newline
 can come between `url(` and a quote; after any other character, such as a vertical tab from
-`&#11;`, a browser reads a bad URL up to the `)`, and so does the check. A comment is
-dropped without leaving a space, as a browser drops it, so `[value/**/^=` still rejects and
-reports `[value^=`. A block that removal or any of the three scans cannot finish within a
+`&#11;`, a browser reads a bad URL up to the `)`, and so does the check. For the tokens in
+check 1 a comment is dropped without leaving a space, as a browser drops it, so
+`[value/**/^=` still rejects and reports `[value^=`. For the names in check 2 a comment or
+string leaves a break, since it also ends the name before it: `u/**/rl(` is a name `u` and
+a function `rl(`, which rejects, and `foo/**/rgb(` passes on `rgb(`. A block that removal or any of the three scans cannot finish within a
 PCRE limit (megabytes inside one comment or string, or of `x*|` pairs inside one `[`)
 rejects with `css-not-allowed` and its first 80 characters as the detail; it is never
 passed unchecked.

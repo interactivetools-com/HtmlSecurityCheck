@@ -6,7 +6,7 @@ namespace Itools\HtmlSecurityCheck;
 use RuntimeException;
 
 // import built-ins so calls resolve at compile time instead of per-call lookups; NamespacedCallsTest keeps this list exact
-use function addcslashes, array_diff, array_intersect, array_map, array_values, chr, count, implode, in_array, max, preg_grep, preg_last_error_msg, preg_match, preg_match_all, preg_quote, preg_replace, preg_split, range, setlocale, str_replace, str_starts_with, stripos, strlen, strncasecmp, strpos, strtolower, strtr, substr, trim;
+use function addcslashes, array_diff, array_intersect, array_map, array_values, chr, count, implode, in_array, max, preg_grep, preg_last_error_msg, preg_match, preg_match_all, preg_quote, preg_replace, preg_replace_callback, preg_split, range, setlocale, str_replace, str_starts_with, stripos, strlen, strncasecmp, strpos, strtolower, strtr, substr, trim;
 
 use const LC_CTYPE, PREG_OFFSET_CAPTURE, PREG_SPLIT_NO_EMPTY;
 
@@ -217,14 +217,17 @@ final class HtmlSecurityCheck
     // takes *| (the any-namespace prefix), since [*|value^= matches the same attribute
     private const CSS_FORBIDDEN = '/\\\\|-moz-binding|(?<![a-z0-9-])(?:-ms-)?behavior\s*:|\[(?!\s*+(?:(?:\*|[a-z0-9_-]*+)\|)?+(?:style|src|class)\s*+[\^$*]=)(?:[^\]=^$*\[]++|\*\|)*+[\^$*]=|unicode-range/i';
 
-    // a CSS function name and its (, image-set( or --custom(, read with comments and strings removed. The lookbehind
-    // makes it a whole name, so in x-rotate( the name is x-rotate, and not an at-rule, so @media(...) is not media(.
-    // An unquoted url() is stepped over, since an ( inside it is part of the URL
-    private const CSS_FUNCTION = '/(?<![\w\x80-\xFF#@-])url\([^)]*+(*SKIP)(*FAIL)|(?<![\w@-])(-{0,2}+[a-z_][\w-]*+)\(/i';
+    // a CSS function name and its (, image-set( or --custom(, read from the CSS with each comment and string left as
+    // a break. A name is read as CSS reads one: -- or an optional - and then a letter, _ or non-ASCII byte, then any
+    // of those, digits and -, so ---f(, --1f( and a non-ASCII name are functions. The lookbehind makes it a whole
+    // name and not the end of a number, hash or at-rule: in x-rotate( the name is x-rotate, and 1url(, #rgb( and
+    // @media( are a number, a hash or an at-rule and then a ( block. An unquoted url() is stepped over, since an (
+    // inside it is part of the URL; url("x") is a function like any other, read up to its ( only
+    private const CSS_FUNCTION = '/(?<![\w\x80-\xFF#@-])url\([ \t\n]*+(?!")[^)]*+(*SKIP)(*FAIL)|(?<![\w\x80-\xFF#@-])((?:--|-?+[a-z_\x80-\xFF])[\w\x80-\xFF-]*+)\(/i';
 
-    // a CSS at-rule name, @media or @import, read with comments and strings removed; an unquoted url() is stepped
-    // over, since url(https://user@host/) holds an @ that starts nothing
-    private const CSS_AT_RULE = '/(?<![\w\x80-\xFF#@-])url\([^)]*+(*SKIP)(*FAIL)|@(-?+[a-z_][\w-]*+)/i';
+    // a CSS at-rule name, @media or @import, read like a function name; an unquoted url() is stepped over, since
+    // url(https://user@host/) holds an @ that starts nothing
+    private const CSS_AT_RULE = '/(?<![\w\x80-\xFF#@-])url\([ \t\n]*+(?!")[^)]*+(*SKIP)(*FAIL)|@((?:--|-?+[a-z_\x80-\xFF])[\w\x80-\xFF-]*+)/i';
 
     // a backslash inside a quoted url() argument: an escape there still spells a scheme, url("\6a avascript:")
     private const CSS_URL_ESCAPE = '/url\([ \t\n]*+["\'][^"\')\\\\]*+\\\\/i';
@@ -671,12 +674,15 @@ final class HtmlSecurityCheck
         // string ends there. Only a style attribute can bring them here, from &#13; and &#12;
         $css = strtr(str_replace("\r\n", "\n", $css), "\r\f", "\n\n");
 
-        // comments and strings are removed, not blanked to a space: the CSS tokenizer drops a comment without leaving
-        // whitespace, so [*/**/|x^=a] reads [*|x^=a] to a browser, and joining the text around a string can only add a
-        // match. Past a PCRE limit (megabytes inside one comment or string) the comments are still in the text and could
-        // split a selector the scans below look for, so the block is refused
-        $code = preg_replace(self::CSS_COMMENT_OR_STRING, '', $css);
-        if ($code === null) {
+        // for the banned patterns, comments and strings are removed, not blanked to a space: a browser drops a comment
+        // without leaving whitespace, so [*/**/|x^=a] reads [*|x^=a], and joining the text around a string can only add
+        // a match. For names, each leaves a break, since a comment or string also ends the name before it: u/**/rl( is
+        // a name u and a function rl(. A string leaves "", so url('x' stays a function. Past a PCRE limit (megabytes
+        // inside one comment or string) the comments are still in the text and could split a selector the scans below
+        // look for, so the block is refused
+        $code  = preg_replace(self::CSS_COMMENT_OR_STRING, '', $css);
+        $names = preg_replace_callback(self::CSS_COMMENT_OR_STRING, fn(array $match) => $match[0][0] === '/' ? ' ' : '""', $css);
+        if ($code === null || $names === null) {
             $this->fail('css-not-allowed', self::excerpt($css));
             return;
         }
@@ -686,8 +692,8 @@ final class HtmlSecurityCheck
         } elseif ($found === false) {
             $this->fail('css-not-allowed', self::excerpt($css));   // the PCRE limit (megabytes of x*| pairs inside one [): a block too big to check is refused, never passed
         }
-        $this->checkCssNames($css, $code, self::CSS_FUNCTION, self::CSS_FUNCTIONS);
-        $this->checkCssNames($css, $code, self::CSS_AT_RULE, self::CSS_AT_RULES);
+        $this->checkCssNames($css, $names, self::CSS_FUNCTION, self::CSS_FUNCTIONS);
+        $this->checkCssNames($css, $names, self::CSS_AT_RULE, self::CSS_AT_RULES);
         $found = preg_match(self::CSS_URL_ESCAPE, $css, $match);
         if ($found !== 0) {   // false (a PCRE limit) refuses too
             $this->fail('css-not-allowed', self::excerpt($match[0] ?? $css));
@@ -705,14 +711,14 @@ final class HtmlSecurityCheck
     }
 
     /**
-     * Refuses every function or at-rule name in $code (the CSS with comments and strings removed)
-     * that is not in $allowed, with the name as written as the detail: image-set( or @import.
+     * Refuses every function or at-rule name in $names (the CSS with each comment and string left as
+     * a break) that is not in $allowed, with the name as written as the detail: image-set( or @import.
      *
      * @param string[] $allowed
      */
-    private function checkCssNames(string $css, string $code, string $pattern, array $allowed): void
+    private function checkCssNames(string $css, string $names, string $pattern, array $allowed): void
     {
-        if (preg_match_all($pattern, $code, $matches) === false) {   // a PCRE limit was reached, so the names are unknown
+        if (preg_match_all($pattern, $names, $matches) === false) {   // a PCRE limit was reached, so the names are unknown
             $this->fail('css-not-allowed', self::excerpt($css));
             return;
         }

@@ -243,6 +243,42 @@ final class CssTest extends HtmlSecurityCheckTestCase
     }
 
     /**
+     * Function and at-rule names are read as CSS reads them: a comment or string ends the name before it,
+     * and a name may start with --, a digit after --, or a non-ASCII letter
+     */
+    #[DataProvider('cssNameProvider')]
+    public function testNamesAreReadAsCssReadsThem(string $css, string $detail): void
+    {
+        $this->assertRejects("<style>$css</style>", 'css-not-allowed', $detail);
+    }
+
+    public static function cssNameProvider(): array
+    {
+        return [
+            'comment inside a name'       => ['a{b:u/**/rl(x)}', 'rl('],
+            'three dashes'                => ['a{--x:---f(1)}', '---f('],
+            'digit after two dashes'      => ['a{--x:--1f(1)}', '--1f('],
+            'non-ASCII name'              => ["a{--x:\u{e9}(1)}", "\u{e9}("],
+            'non-ASCII after two dashes'  => ["a{--x:--\u{e9}rgb(1)}", "--\u{e9}rgb("],
+            'after a quoted url('        => ["a{b:url('a' image-set(x)}", 'image-set('],
+            'after a closed quoted url()' => ["a{b:url('a') image-set(x)}", 'image-set('],
+            'at-rule with two dashes'     => ['@--x{}', '@--x'],
+            'non-ASCII at-rule'           => ["@\u{e9}{}", "@\u{e9}"],
+        ];
+    }
+
+    /**
+     * A comment ends the name before it, so the name after it is read on its own, and a name after #
+     * or a number is a hash or a unit: none of these calls a function in a browser
+     */
+    public function testNamesAroundCommentsAndHashesPass(): void
+    {
+        $this->assertAccepts('<style>a{b:foo/**/rgb(1, 2, 3)}</style>');
+        $this->assertAccepts('<style>a{--x:#image-set(x)}</style>');
+        $this->assertAccepts('<style>a{--x:7--url(x)}</style>');
+    }
+
+    /**
      * A block past the PCRE limits is never passed unchecked: a block where comment removal
      * can't finish is refused, since the comments left in could split a selector, and the token
      * scan takes a megabyte of letters after a [ in one step, so it never reaches the limit there

@@ -43,6 +43,7 @@ final class CssFuzzer
         "a{b:url(x')}", "p{--x:\"\\a\n\"}", "p{--x:'\\201c\n'}", "a{x:'\\'}", "a{x:\"\\\"\"}", "a{content:'/*'}",
         "a{b:url(\"x\") /* x */}", '/* x */', '/**/', '<!-- -->', '<!--', '@media x{', '@media x{}', 'a{}', 'a{b:c}',
         'a{b:url( x )}', "a{b:url(x\\))}", '@import url(x);', 'a{b:c(/*)*/)}', "a{b:\"x\ny\"}",
+        'a{--x:u/**/rl(x)}', 'a{--x:---f(x)}', "a{--x:url('a';c(x)}",
     ];
 
     // what an edit inserts: CSS tokens and the pieces of them that tricks are built from
