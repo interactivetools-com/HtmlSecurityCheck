@@ -168,7 +168,7 @@ Every code, its template, and what `detail` holds. Templates are `Violation::TEM
 | `attribute-not-allowed`  | `The %s attribute is not allowed`                                                               | the attribute name, lowercased (`data-id`, `x-init`, `srcdoc`), or for an `xmlns:*` declaration the name and value (`xmlns:o="http://www.w3.org/1999/xhtml"`) |
 | `url-scheme-not-allowed` | `%s uses a URL scheme that is not allowed`                                                      | the attribute name and its decoded value (`href="javascript:alert(1)"`)                                                                                   |
 | `iframe-host`            | `Embedding frames from %s is not allowed`                                                       | the `src` value with tabs and newlines removed and the ends trimmed (`https://evil.example/x`), or `(no src)`                                             |
-| `css-not-allowed`        | `CSS containing %s is not allowed`                                                              | the function or at-rule as written (`expression(`, `@import`), the banned token as matched (`\`, `[value^=`, `unicode-range`) or the `url()` with its target (`url(javascript:x)`), `url('\` for a backslash in a quoted `url()`, or the first 80 characters of a block past the PCRE limit (megabytes of `x*|` pairs inside one `[`) |
+| `css-not-allowed`        | `CSS containing %s is not allowed`                                                              | the function or at-rule as written (`expression(`, `@import`), the banned token as matched (`\`, `[value^=`, `unicode-range`) or the `url()` with its target (`url(javascript:x)`), `url('\` for a backslash in a quoted `url()`, or the first 80 characters of a block too large or too complex to check (it reached a PCRE limit) |
 | `less-than-in-text`      | `A < where a browser reads text, not tags: %s`                                                  | the text from that `<` to the end of the raw text or comment (`<img src=x onerror=alert(1)>`, `<b> c`)                                                    |
 | `unclosed-markup`        | `%s is not closed`                                                                              | the unfinished markup from where it opened to the end of the content (`<img src="//evil.example/?`, `<!-- hidden`, `<style>p { }`)                        |
 | `not-checked`            | `Content could not be checked: %s`                                                              | PHP's own message (`Backtrack limit exhausted`, `Recursion limit exhausted`): a regex stopped at a PCRE limit set far below PHP's default                 |
@@ -407,16 +407,18 @@ form or the API before the check.
   content length, and what the text says.
 - **Check stored content before printing it.** HTML from an import, an email or a save from
   before the check was never checked. A check costs under 0.04 ms for a typical page, so
-  checking on every view is fine. To show staff a rejected record, print it in
-  `<iframe sandbox srcdoc="<?= htmlspecialchars($html) ?>"></iframe>`.
-- **Visitor posts need a sanitizer first.** A rejection works for staff who can fix the HTML,
-  not for a visitor writing a forum post or comment. Run that HTML through a sanitizer such as
-  HTMLPurifier, then run HTMLPurifier's output through `check()` before saving it. On the test
-  pages, HTMLPurifier's output passes except for `news:` links and `alt`, `title` or `class`
-  values that start with `javascript:`.
-- **Add a Content Security Policy as a backup.** On pages that show content from visitors,
-  emails or imports, send `Content-Security-Policy: script-src 'self'; object-src 'none';
-  base-uri 'none'`, so script that gets past a rule still doesn't run.
+  checking on every view is fine.
+- **Sanitize what visitors write.** A rejection works for staff who can fix the HTML, not for a
+  visitor. Run forum posts and comments through a sanitizer such as HTMLPurifier, then through
+  `check()` before saving, so script gets through only if both miss it. HTMLPurifier's output
+  passes except for `news:` links and `alt`, `title` or `class` values that start with
+  `javascript:`.
+- **Send a Content Security Policy.** `Content-Security-Policy: script-src 'self'; object-src
+  'none'; base-uri 'none'` on pages that show the content runs your own script files and
+  nothing else.
+- **Show unchecked or rejected HTML in a sandboxed iframe.**
+  `<iframe sandbox srcdoc="<?= htmlspecialchars($html) ?>"></iframe>` runs no script and can't
+  reach the page or its cookies.
 - **Switches are process-wide.** They are static properties, so a change in one request
   handler affects every later `check()` in the same process. Set them once in a file every
   entry point includes, so the save and the page that prints agree. Add a host with

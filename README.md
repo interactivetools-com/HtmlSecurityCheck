@@ -100,30 +100,26 @@ lists can't catch (`\` escapes, `behavior:`, `[value^=`) are rejected on their o
   overlays, invalid HTML, `id` or `name` values that match a page script's variables, and
   length all pass. Cap the size before the check; check time grows in step with size.
 
-## Additional Protection
+## Best Practices for Displaying HTML
 
-The check is built to stop script by itself. The three steps below are a backup in case a bug
-or a browser change lets script past a rule, and they also cover content the check never saw.
-Add the Content Security Policy to every page that shows content from visitors, emails or
-imports:
+Each of these keeps script from running even if something gets past the check, and they
+protect HTML the check never saw, such as old records and imports:
 
-- **A Content Security Policy on pages that show it.** `script-src 'self'; object-src 'none';
-  base-uri 'none'` runs your own script files and nothing else. To keep an inline script, add
-  `'nonce-...'` to `script-src` and the same nonce to the tag.
-- **Turn script off in the editor.** Content saved before the check existed opens there
-  unchecked. Give the editor's frame the policy `script-src 'none'; object-src 'none'`
-  (TinyMCE's `content_security_policy` option; iframe mode only).
-- **Show rejected content without running it.** Print it in
-  `<iframe sandbox srcdoc="<?= htmlspecialchars($body) ?>"></iframe>`: no script, forms or
-  popups, and no access to your page or its cookies. Images and CSS still load.
+- **Sanitize what visitors write.** Run forum posts and comments through a sanitizer such as
+  [HTMLPurifier](https://htmlpurifier.org/), then through `check()` before saving, so script
+  gets through only if both miss it.
+- **Send a Content Security Policy.** `script-src 'self'; object-src 'none'; base-uri 'none'`
+  on pages that show the content runs your own script files and nothing else.
+- **Show unchecked or rejected HTML in a sandboxed iframe.**
+  `<iframe sandbox srcdoc="<?= htmlspecialchars($body) ?>"></iframe>` runs no script and can't
+  reach your page or its cookies.
 
 ## When You Might Not Want HtmlSecurityCheck
 
 - **Visitor posts.** A rejection works for staff who can fix the HTML, not for a visitor who
-  can't. Forum posts and comments need a sanitizer such as [HTMLPurifier](https://htmlpurifier.org/).
-  Then run HTMLPurifier's output through HtmlSecurityCheck before saving it, so script gets
-  through only if both miss it. On our test pages, HTMLPurifier's output passes except for
-  `news:` links and `alt`, `title` or `class` values that start with `javascript:`.
+  can't, so visitor posts need a sanitizer first ([Best Practices for Displaying HTML](#best-practices-for-displaying-html)).
+  HTMLPurifier's output passes the check except for `news:` links and `alt`, `title` or
+  `class` values that start with `javascript:`.
 - **Inline SVG or MathML.** Both are rejected with no switch. Upload SVG as a file, check it with
   [SvgSecurityCheck](https://github.com/interactivetools-com/SvgSecurityCheck), and show it with
   `<img src>`.
