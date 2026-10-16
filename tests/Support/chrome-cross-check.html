@@ -15,11 +15,13 @@ document.getElementById('cases').remove();   // so the dumped DOM is the result,
 const found = [];
 
 // The CSS as Chrome parsed it, read back from the CSSOM: what the check refuses must not be in a rule Chrome kept.
-// Strings and comments are blanked before names are read, left to right the way CSS reads them, with an unquoted
-// url() kept whole since a quote or /* in it is part of the URL. Chrome writes strings with double quotes, but a
-// custom property (--x) keeps its value as written: single quotes, comments and unclosed strings included. A hex
-// escape eats one whitespace after it, so "\a<newline> does not end the string.
-const STRINGS_AND_COMMENTS = /(?<![\w\u0080-\uffff#@-])url\((?!\s*["'])[^)]*\)?|\/\*[\s\S]*?(?:\*\/|$)|"(?:[^"\\\n]|\\(?:[0-9a-f]{1,6}[ \t\n]?|[\s\S]))*(?:"|\n|$)|'(?:[^'\\\n]|\\(?:[0-9a-f]{1,6}[ \t\n]?|[\s\S]))*(?:'|\n|$)/gi;
+// Strings, comments and <\!-- are blanked before names are read, left to right the way CSS reads them, with an
+// unquoted url() kept whole since a quote or /* in it is part of the URL. <\!-- is a token of its own, so the
+// -- in <\!--url( doesn't start a name. Chrome writes strings with double quotes, but a custom property (--x) keeps
+// its value as written: single quotes, comments, <\!-- and unclosed strings included. A hex escape eats one
+// whitespace after it, so "\a<newline> does not end the string. (<\!-- with the \: a plain one in this script,
+// before the '<script>' string below, would stop the HTML parser from ending the script at its end tag.)
+const STRINGS_AND_COMMENTS = /(?:(?<=<\!--)|(?<![\w\u0080-\uffff#@-]))url\((?!\s*["'])[^)]*\)?|<\!--|\/\*[\s\S]*?(?:\*\/|$)|"(?:[^"\\\n]|\\(?:[0-9a-f]{1,6}[ \t\n]?|[\s\S]))*(?:"|\n|$)|'(?:[^'\\\n]|\\(?:[0-9a-f]{1,6}[ \t\n]?|[\s\S]))*(?:'|\n|$)/gi;
 // CR, CRLF and form feed are one newline to CSS, and a custom property keeps them as written
 const codeOf = text => text.replace(/\r\n?|\f/g, '\n').replace(STRINGS_AND_COMMENTS, match => /^url\(/i.test(match) ? match : '""');
 const checkFunctionsAndUrls = (text, name, where) => {
