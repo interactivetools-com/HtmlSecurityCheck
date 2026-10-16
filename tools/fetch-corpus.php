@@ -354,7 +354,7 @@ function extractDomPurify(array $raws): array
 function extractMarkdownBlocks(array $raws, array $languages = ['', 'html']): array
 {
     $cases = [];
-    foreach ($raws as $file => $markdown) {
+    foreach ($raws as $markdown) {
         $title = '';
         preg_match_all('/^(#{2,4}) ([^\n]+)$|^```(\w*)\n(.*?)^```$/ms', $markdown, $matches, PREG_SET_ORDER);
         foreach ($matches as $match) {
