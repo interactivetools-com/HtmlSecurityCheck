@@ -42,6 +42,7 @@ final class UrlsTest extends HtmlSecurityCheckTestCase
             'colon in the path' => ['/time/12:30'],
             'colon in query'    => ['?when=12:30'],
             'spaces'            => ['my file.pdf'],
+            'backslash in path' => ['images\\logo.png'],
         ];
     }
 
@@ -112,6 +113,17 @@ final class UrlsTest extends HtmlSecurityCheckTestCase
             'data image with no slash'   => ['<img src="data:imagepng;base64,iVBORw0KGgo=">'],
             'unknown scheme on href'     => ['<a href="ftp://example.com/">x</a>'],
             'file scheme'                => ['<a href="file:///etc/passwd">x</a>'],
+            'network path'               => ['<img src="\\\\evil.example\\share\\x.png">'],
+            'network path on href'       => ['<a href="\\\\evil.example\\x">x</a>'],
+            'network path, slash first'  => ['<img src="/\\evil.example/x.png">'],
+            'network path, slash second' => ['<img src="\\/evil.example/x.png">'],
+            'network path after a tab'   => ['<img src="&#9;\\\\evil.example\\x.png">'],
+            'network path in entities'   => ['<img src="&#92;&#92;evil.example&#92;x.png">'],
+            'network path after https'   => ['<a href="https:\\\\evil.example\\x">x</a>'],
+            'network path in srcset'     => ['<img srcset="a.png 1x, \\\\evil.example\\x.png 2x">'],
+            'network path on word image' => ['<v:imagedata src="\\\\evil.example\\x.png"/>'],
+            'drive letter and bar'       => ['<img src="C|/x.png">'],
+            'drive letter after https'   => ['<a href="https:C:/x">x</a>'],
             'leading spaces'             => ['<a href="   javascript:alert(1)">x</a>'],
             'leading tab and newline'    => ["<a href=\"\t\njavascript:alert(1)\">x</a>"],
             'newline inside the scheme'  => ["<a href=\"java\nscript:alert(1)\">x</a>"],

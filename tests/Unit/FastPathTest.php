@@ -152,6 +152,8 @@ final class FastPathTest extends HtmlSecurityCheckTestCase
             'slash separator'         => ['<p/onclick="x">'],
             'javascript href'         => ['<a href="javascript:x">'],
             'data href'               => ['<a href="data:x">'],
+            'network path'            => ['<img src="\\\\x\\y">'],
+            'drive letter and bar'    => ['<img src="C|/x">'],
             'colon in a plain value'  => ['<p title="javascript:x">'],
             'reference in a value'    => ['<a href="&#106;avascript:x">'],
             'srcdoc'                  => ['<p srcdoc="x">'],

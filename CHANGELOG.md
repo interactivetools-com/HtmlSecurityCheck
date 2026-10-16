@@ -20,8 +20,9 @@ rejects anything that could run script in the page it is printed into, with a `R
 - **Attribute allowlist**: the HTML Standard's attribute index minus `srcdoc` and `is`, plus the
   obsolete presentational attributes, `aria-*` and Word's own; `on*` and unknown names are
   refused. `href`, `src` and the other URL attributes limited to `http:`, `https:`, `mailto:`,
-  `tel:` or no scheme, plus `data:image/...` on `<img src>`; `javascript:` refused at the
-  start of every other attribute value but `style`, which is checked as CSS.
+  `tel:` or no scheme, never a Windows path (`\\server\x`, `C|/x`), plus `data:image/...` on
+  `<img src>`; `javascript:` refused at the start of every other attribute value but `style`,
+  which is checked as CSS.
 - **CSS check** on the `style` attribute and the `<style>` element: function names and
   at-rules must be on allowlists (`image-set(`, `expression(` and `@import` are not), the
   backslash and the properties that ran script in old IE and Firefox are refused, `url()`

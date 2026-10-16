@@ -199,8 +199,10 @@ them.
 - **URLs.** On `URL_ATTRIBUTES` a value must have no scheme or one in `$urlSchemes`; every URL
   in a `srcset` or `ping` list is checked. The scheme is read as a browser reads it, entities
   decoded and whitespace dropped, so `jav&#x09;ascript:` is `javascript:`. `data:image/...`
-  passes on `<img src>` only. Every other attribute value but `style`, which is checked as
-  CSS, is refused only when it starts with a scheme in `SCRIPT_SCHEMES` (`javascript:`).
+  passes on `<img src>` only. A Windows path (`\\host\x`, `/\host`, `C|/x`, `https:C:/x`) is
+  refused too, since Windows opens a network path over SMB with the reader's login. Every
+  other attribute value but `style`, which is checked as CSS, is refused only when it starts
+  with a scheme in `SCRIPT_SCHEMES` (`javascript:`).
 - **Iframes.** `src` must be `https://`, `http://` or `//`, then a host in `$iframeHosts`
   matched whole (`player.vimeo.com` is not `vimeo.com`; no port, no subdomains), then the
   end or `/`, `?` or `#`. Otherwise `iframe-host`.

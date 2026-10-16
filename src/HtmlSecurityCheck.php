@@ -235,6 +235,12 @@ final class HtmlSecurityCheck
     // url( in a comment or string cannot take the real url() after it as its argument
     private const CSS_URL = '/url\([ \t\n]*+(?=(?|"([^"]*+)|\'([^\']*+)|([^"\')\s]*+)))/i';
 
+    // a Windows path, read with whitespace and controls dropped: \\host, \/host or /\host (a network path, which
+    // Windows opens over SMB, sending the user's login to the host; Outlook renders mail with Word, not a browser),
+    // or a drive letter and : or | (C|/x), each also after http: or https:, since Chrome on Windows reads https:C:/x
+    // as file:///C:/x
+    private const WINDOWS_PATH = '/^(?:https?:)?+(?:\\\\[\\\\\/]|\/\\\\|[a-z][:|])/i';
+
     // the longest run of well-formed UTF-8 from the start; the byte after the match is the first bad one
     private const UTF8_PREFIX = '/\A(?:[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2})*+/';
 
@@ -527,8 +533,8 @@ final class HtmlSecurityCheck
         $space = '[\t\n\f ]';
         // a value with no character reference but &amp; (a reference can decode to anything) and no colon, so no scheme
         $value = '(?:[^"&<>:]|&amp;)*+';
-        // a URL attribute value may start with a listed scheme; the rest is a plain value
-        $url = '(?:(?:' . implode('|', array_map(preg_quote(...), $schemes)) . '):)?+' . $value;
+        // a URL attribute value may start with a listed scheme; the rest is a plain value with no \ or |, so no Windows path
+        $url = '(?:(?:' . implode('|', array_map(preg_quote(...), $schemes)) . '):)?+(?:[^"&<>:\\\\|]|&amp;)*+';
         // CSS with none of the punctuation the CSS check reads (\ escapes, ( every function, @ at-rules, [ selectors,
         // & references) and none of the three bare words on CSS_FORBIDDEN
         $css = '(?:(?!-moz-binding|(?<![a-z0-9-])(?:-ms-)?behavior\s*+:|unicode-range)[^"\\\\()@\[&<>])*+';
@@ -602,7 +608,12 @@ final class HtmlSecurityCheck
         if ($urls === false) {
             throw new RuntimeException(preg_last_error_msg());
         }
+        $isUrlAttribute = in_array($attribute, self::URL_ATTRIBUTES, true);
         foreach ($urls as $url) {
+            if ($isUrlAttribute && preg_match(self::WINDOWS_PATH, self::compact($url)) === 1) {
+                $this->fail('url-scheme-not-allowed', self::excerpt("$attribute=\"$value\""));
+                return;
+            }
             $scheme = self::scheme($url);
             if ($scheme === null) {
                 continue;
@@ -610,7 +621,7 @@ final class HtmlSecurityCheck
             if ($scheme === 'data' && $element === 'img' && $attribute === 'src' && str_starts_with(strtolower(self::compact($url)), 'data:image/')) {
                 continue;   // inline image data: a browser decodes an img resource as a picture and nothing else, whatever the type
             }
-            $allowed = in_array($attribute, self::URL_ATTRIBUTES, true)
+            $allowed = $isUrlAttribute
                 ? in_array($scheme, self::urlSchemes(), true)
                 : !in_array($scheme, self::SCRIPT_SCHEMES, true);
             if (!$allowed) {

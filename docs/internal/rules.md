@@ -126,6 +126,12 @@ and `&#106;avascript:` are `javascript:` too. A value with no scheme (a relative
   `<img src>` also accepts `data:image/...`, any image type, `svg+xml` included, because a
   browser decodes an `img` resource as a picture and nothing else. `data:` on `srcset`,
   `poster` or `href`, in an `<iframe>` or in CSS `url()` still rejects.
+- On the same attributes a Windows path rejects with `url-scheme-not-allowed` too: `\\host\x`,
+  `/\host` or `\/host`, a network path that Windows opens over SMB, sending the reader's
+  Windows login to the host (Outlook renders mail with Word, not a browser), or a drive letter
+  and `:` or `|` (`C|/x`), each also after `http:` or `https:`, since Chrome on Windows reads
+  `https:C:/x` as `file:///C:/x`. It is read like the scheme, with whitespace and controls
+  dropped. A `\` later in the value passes: `images\logo.png` is `images/logo.png` to a browser.
 - On every other attribute, only the schemes in `SCRIPT_SCHEMES` reject: `javascript`. A
   browser ignores `javascript:` in `title=` or `value=`, but a page script that copies the
   value into a link or into `location` runs it. `vbscript:` and `data:` pass there because
