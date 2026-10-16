@@ -30,9 +30,10 @@ use const LC_CTYPE, PREG_OFFSET_CAPTURE, PREG_SPLIT_NO_EMPTY;
  * reads the bytes after it, plus Word's o:, v: and w: names. Attributes: the HTML Standard's
  * attribute index minus srcdoc and is, the old presentational ones, aria-*, and Word's own.
  * on* is refused by prefix, URL attributes may only use a scheme in $urlSchemes (http, https,
- * mailto and tel by default) or data:image/ on <img src>, and no other attribute but style may
- * start with javascript:. style is checked as CSS: function names and at-rules are allowlists
- * too, url() is limited to http and https, and a few patterns are refused on their own.
+ * mailto and tel by default) or data:image/ on <img src> and never hold a Windows path
+ * (\\server\x, C|/x), and no other attribute but style may start with javascript:. style is
+ * checked as CSS: function names and at-rules are allowlists too, url() is limited to http and
+ * https, and a few patterns are refused on their own.
  * Unknown elements and attributes are refused.
  *
  * The check runs on the HTML5 token stream and never builds a tree, so it sees the same
@@ -264,7 +265,8 @@ final class HtmlSecurityCheck
     /**
      * @var string[] URL schemes a URL attribute may start with; any other scheme is refused, and a value with no
      *               scheme passes. Add what your visitors' machines should open on a click (sms, whatsapp, an app
-     *               link). Read lowercase, and javascript is refused whatever this holds
+     *               link). Read lowercase, and javascript is refused whatever this holds. An entry that is
+     *               not a scheme name, such as 'tel:', is ignored
      */
     public static array $urlSchemes = ['http', 'https', 'mailto', 'tel'];
 
@@ -351,6 +353,11 @@ final class HtmlSecurityCheck
 
     /** $maxErrors as this check reads it: at least 1, so content a rule refuses is never reported as passing */
     private readonly int $errorLimit;
+
+    /**
+     * @var array<string, bool> LC_CTYPE values seen in this process, true when PCRE reads bytes under them as under C
+     */
+    private static array $localeReadsLikeC = ['C' => true];
 
     private function __construct()
     {
@@ -677,9 +684,9 @@ final class HtmlSecurityCheck
         // for the banned patterns, comments and strings are removed, not blanked to a space: a browser drops a comment
         // without leaving whitespace, so [*/**/|x^=a] reads [*|x^=a], and joining the text around a string can only add
         // a match. For names, each leaves a break, since a comment or string also ends the name before it: u/**/rl( is
-        // a name u and a function rl(. A string leaves "", so url('x' stays a function. Past a PCRE limit (megabytes
-        // inside one comment or string) the comments are still in the text and could split a selector the scans below
-        // look for, so the block is refused
+        // a name u and a function rl(. A string leaves "", so url('x' stays a function. Past a PCRE limit (a very
+        // long comment or string) the comments are still in the text and could split a selector the scans below look
+        // for, so the block is refused
         $code  = preg_replace(self::CSS_COMMENT_OR_STRING, '', $css);
         $names = preg_replace_callback(self::CSS_COMMENT_OR_STRING, fn(array $match) => $match[0][0] === '/' ? ' ' : '""', $css);
         if ($code === null || $names === null) {
@@ -792,11 +799,6 @@ final class HtmlSecurityCheck
         }
         return false;
     }
-
-    /**
-     * @var array<string, bool> LC_CTYPE values seen in this process, true when PCRE reads bytes under them as under C
-     */
-    private static array $localeReadsLikeC = ['C' => true];
 
     /**
      * True when PCRE, under the current LC_CTYPE, reads letter case, \w and \s for all 256 byte values as it does

@@ -34,11 +34,12 @@ declare(strict_types=1);
  * design (inline svg, javascript: in any attribute) the tally shows it and the reason goes
  * in tools/corpus-known.json.
  *
- * Nothing under corpus/ is ever copied into tests/: the PortSwigger page is copyrighted,
- * the OWASP sheet, Wikipedia, MDN and the Mailchimp templates are CC BY-SA, the editor
- * suites and paste captures are GPL. Running the validator over the files on a developer's
- * machine is a use every one of those licenses allows. Our own must-pass samples go in
- * tests/Support/fixtures/accept/, written in our own words from what the corpus surfaced.
+ * Nothing under corpus/ is ever copied into tests/. The PortSwigger page is copyrighted, the
+ * OWASP sheet, Wikipedia, MDN and the Mailchimp templates are CC BY-SA, and the editor suites
+ * and paste captures are GPL; running the check over the files on a developer's machine is a
+ * use their terms allow. Each source's license text is saved next to its files, so the terms
+ * travel with them. Our own must-pass samples go in tests/Support/fixtures/accept/, written in
+ * our own words from what the corpus surfaced.
  */
 
 const CORPUS_DIR = __DIR__ . '/../corpus';
