@@ -266,9 +266,10 @@ markup inside it. That markup gets the same rules as the content around it, from
 `-->`, so it reports `unclosed-markup` once and the markup inside it is not read again.
 Ordinary text and everything else inside `<!-- -->` are never checked.
 
-The reason is what happens after the check: `strip_tags()` with an allow list and HTML4-era
-DOM parsers read a tag inside these as live. Content that passed the check stays safe
-through them only if no tag can appear where the check saw text.
+The reason is what happens after the check: an HTML4-era parser such as PHP's `DOMDocument`
+reads a tag inside some of these as a real tag, and so does `strip_tags()` with an allow list.
+Only the parser is a goal; Known Non-Goals in design-decisions.md has a `strip_tags()` case
+these rules don't catch.
 
 ## Rules: Unclosed Markup
 

@@ -35,11 +35,10 @@ rejects anything that could run script in the page it is printed into, with a `R
   whatever it holds).
 - **Unclosed markup** (`<img src="`, `<!-- x`, `<style>` with no end tag) is refused, since a
   fragment printed into a page keeps reading the page as part of it.
-- **A `<` inside raw text is refused** (`less-than-in-text`): the content of `<style>`, `<iframe>`
-  and `<textarea>`, and comments that are not `<!-- -->`, are text to a browser but tags to
-  `strip_tags()` with an allow list or an HTML4-era parser, so a fragment that passed the check
-  stays safe through them. A `<!--` inside `<style>` passes when its `-->` is in
-  the same block, for Word's `<style><!-- ... --></style>`.
+- **A `<` inside raw text is refused** (`less-than-in-text`): in `<style>`, `<iframe>`,
+  `<textarea>` and comments that are not `<!-- -->`, a browser reads it as text, but an
+  HTML4-era parser such as `DOMDocument` can read a tag there. A `<!--` inside `<style>` passes
+  when its `-->` is in the same block, for Word's `<style><!-- ... --></style>`.
 - **Old IE's markup**: the markup inside a `<!--[if ...]>` conditional comment gets the same
   rules as the rest, for the IE engine inside old Windows programs and Outlook's Word engine,
   so email templates' `<!--[if mso]>` tables pass and a script inside one rejects.

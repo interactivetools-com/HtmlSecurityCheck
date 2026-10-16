@@ -72,7 +72,7 @@ guess.
 ## Known Non-Goals
 
 Each of these was considered and left out on purpose. Every one is a real thing a hostile
-author could do; none of them is script.
+author could do; none of them runs script in a browser.
 
 - **Phishing overlays.** `position: fixed`, `z-index`, a full-page `<div>` and, when the
   forms switch is on, a fake login form. Forms are off by default for this reason; CSS
@@ -105,6 +105,13 @@ author could do; none of them is script.
   regex can't count attributes: PCRE refuses to compile a `{0,1000}` repeat of the attribute
   group, so the limit would apply only with the fast path off. The size cap at the form or the
   API limits this too.
+- **`strip_tags()` with an allow list after the check.** It doesn't read HTML the way a
+  browser does. The raw-text rule below stops some of its mistakes, but not all:
+  `<!-- --!><p title="--><img src=x onerror=alert(1)>">` passes, because a browser ends the
+  comment at `--!>` and reads the `<img>` as title text, but `strip_tags($html, '<p><img>')`
+  ends it at `-->` and returns a live `<img onerror>`. Print checked content as it is, or
+  re-parse it with PHP 8.4's `Dom\HTMLDocument`, which reads HTML the way a browser does.
+  Plain `strip_tags()` with no allow list removes every tag, so it stays safe.
 - **Sense.** Whether the text is blank, wrong, offensive or copied.
 
 ## Reject, Never Rewrite
@@ -406,7 +413,8 @@ it. Measured with `<img src=x onerror=alert(1)>` inside each construct:
 
 HTMLPurifier strips the handler, so it never produces a live one; it does turn the text into
 markup (`<xmp>show <b>this</b></xmp>` comes out bold). Real comments need no `<` rule, since
-every parser reads `<!-- -->` the same way; a conditional comment's inside is checked as
+browsers and `DOMDocument` read `<!-- -->` the same way (`strip_tags()` reads `--!>`
+differently, see [Known Non-Goals](#known-non-goals)); a conditional comment's inside is checked as
 markup instead, see
 [Conditional Comments Are Checked Inside](#conditional-comments-are-checked-inside). The cost on real content is zero: of the 700
 corpus and fixture files the check accepts with every switch on, the rule refuses 28, all
