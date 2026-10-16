@@ -80,7 +80,7 @@ final class CssFuzzer
 
     /**
      * Distinct fragments from the seed, keyed by an id that is also in each marker's URL. Each is a
-     * <style> block, or one time in eight a <p> with a style attribute
+     * <style> block, or one time in four a <p> with a style attribute
      *
      * @return array<int, string>
      */
@@ -95,7 +95,7 @@ final class CssFuzzer
         mt_srand($seed);
         $distinct = [];
         for ($i = 0; $i < $samples; $i++) {
-            $inAttribute                   = mt_rand(0, 7) === 0;
+            $inAttribute                   = mt_rand(0, 3) === 0;
             [$seeds, $pieces, $characters] = $inAttribute ? $attributeEdits : $styleEdits;
             $css                           = self::pick($seeds);
             for ($edits = mt_rand(1, 4); $edits > 0; $edits--) {
