@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>css-fuzz</title></head>
+<body>
+<div id="hosts"></div>
+<pre id="out">not run</pre>
+<!-- tools/css-fuzz.php fills in the fragments, serves this page through tools/css-fuzz-log.php and reads the result out of the pre -->
+<script id="cases" type="application/json">__CASES__</script>
+<script>
+// Each fragment is rendered next to <p title="abc">abc</p>, in its own shadow root so its CSS applies only there.
+// A red p means a selector marker matched the page's own attribute; the markers that load something request
+// /<marker>/<id> from the server, which logs it. Chrome ignores @font-face in a shadow root, so a fragment with
+// one is rendered in the page itself, alone.
+const cases = JSON.parse(document.getElementById('cases').textContent);
+const red   = [];
+const hosts = document.getElementById('hosts');
+const wait  = ms => new Promise(resolve => setTimeout(resolve, ms));
+(async () => {
+    for (const [id, html] of Object.entries(cases)) {
+        const host = document.createElement('div');
+        hosts.replaceChildren(host);
+        const root = html.includes('@font-face') ? host : host.attachShadow({mode: 'open'});
+        root.innerHTML = html + '<p title="abc" class="probe">abc</p>';
+        document.body.offsetHeight;   // layout, so background images and fonts are requested
+        await wait(50);
+        if (getComputedStyle(root.querySelector('.probe')).color === 'rgb(255, 0, 0)') {
+            red.push(id);
+        }
+    }
+    hosts.replaceChildren();
+    document.getElementById('out').textContent = JSON.stringify({red});
+})().catch(error => document.getElementById('out').textContent = JSON.stringify({error: String(error)}));
+</script>
+</body>
+</html>

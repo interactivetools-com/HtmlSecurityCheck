@@ -100,8 +100,7 @@ final class ChromeCrossCheck
     }
 
     /**
-     * Run the page on the cases in one headless Chrome, with a fresh profile so it never attaches
-     * to a browser that is already open
+     * Run the page on the cases in one headless Chrome
      *
      * @param array<string, string> $cases
      * @return array{checked: int, found: string[]}
@@ -119,26 +118,9 @@ final class ChromeCrossCheck
         ];
         file_put_contents($page, strtr(file_get_contents(self::HARNESS), ['__CASES__' => self::json($cases), '__CSS__' => self::json($css)]));
         try {
-            $command = [
-                $chrome, '--headless', '--disable-gpu', '--no-sandbox', '--no-first-run',
-                '--user-data-dir=' . self::pathForChrome($chrome, "$dir/profile"),
-                '--dump-dom', self::pathForChrome($chrome, $page),
-            ];
-            $pipes   = [];
-            $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
-            if (!is_resource($process)) {
-                throw new RuntimeException('could not start Chrome: ' . $chrome);
-            }
-            $dom     = stream_get_contents($pipes[1]);
-            stream_get_contents($pipes[2]);
-            fclose($pipes[1]);
-            fclose($pipes[2]);
-            $exit = proc_close($process);
+            $dom = self::dumpDom($chrome, self::pathForChrome($chrome, $page));
         } finally {
             self::removeDir($dir);
-        }
-        if ($exit !== 0) {
-            throw new RuntimeException("Chrome did not exit cleanly: exit code $exit");
         }
         if (!preg_match('~<pre id="out">([^<]*)</pre>~', $dom, $match)) {
             throw new RuntimeException('no result in the dumped DOM');
@@ -148,6 +130,45 @@ final class ChromeCrossCheck
             throw new RuntimeException('the harness page did not run: ' . $match[1]);
         }
         return $result;
+    }
+
+    /**
+     * The DOM of a page after headless Chrome loads it, with a fresh profile so it never attaches to
+     * a browser that is already open
+     *
+     *     $dom = ChromeCrossCheck::dumpDom($chrome, 'http://127.0.0.1:8099/page.html', ['--virtual-time-budget=60000']);
+     *
+     * @param string $page a URL, or a file path as Chrome reads it
+     * @param string[] $flags more Chrome flags
+     * @throws RuntimeException when Chrome does not start or exits with an error
+     */
+    public static function dumpDom(string $chrome, string $page, array $flags = []): string
+    {
+        $profile = sys_get_temp_dir() . '/htmlcheck-chrome-profile-' . bin2hex(random_bytes(4));
+        try {
+            $command = [
+                $chrome, '--headless', '--disable-gpu', '--no-sandbox', '--no-first-run',
+                '--user-data-dir=' . self::pathForChrome($chrome, $profile), ...$flags, '--dump-dom', $page,
+            ];
+            $pipes   = [];
+            $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+            if (!is_resource($process)) {
+                throw new RuntimeException('could not start Chrome: ' . $chrome);
+            }
+            $dom = stream_get_contents($pipes[1]);
+            stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            $exit = proc_close($process);
+        } finally {
+            if (is_dir($profile)) {
+                self::removeDir($profile);
+            }
+        }
+        if ($exit !== 0) {
+            throw new RuntimeException("Chrome did not exit cleanly: exit code $exit");
+        }
+        return $dom;
     }
 
     /**
