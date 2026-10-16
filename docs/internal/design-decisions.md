@@ -739,6 +739,15 @@ a name), raw and as character references, about 140,000 cases in 12 seconds. Its
 change, so it finds nothing new on unchanged code; it is there for the day the CSS scans do
 change.
 
+URLs have their own page and fuzzer. `tools/url-fuzz.php` edits known URLs around the scheme,
+the slashes, the host and the `srcset` and `ping` separators, with controls, Unicode spaces,
+lookalikes and character references, and `UrlCrossCheck` resolves every URL attribute the
+check accepts with Chrome's `new URL()`. A scheme off the default list, an iframe host off the
+default list, or `javascript:` on any other attribute is a bypass. It also reports
+over-refusals by shape (`java script:x`, a comma inside a `srcset` URL); those are expected.
+Only Chrome on Windows reads a Windows path as a `file:` URL, so only a run with that Chrome
+covers them.
+
 Chrome, not a PHP parser, because a browser is the thing the check protects against: a
 script Chrome does not see is not a script. PHP 8.4's `Dom\HTMLDocument` (Lexbor) was the
 earlier plan and needs nothing installed, but Chrome is on every CI runner except Linux on

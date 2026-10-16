@@ -33,3 +33,6 @@ changes, so check each of these in the same commit:
 - **CSS.** After a CSS rule change, run `php -d xdebug.mode=off tools/css-fuzz.php` (10
   minutes; `--minutes=300` before a release). A fragment it flags gets a test and goes in
   `CssFuzzer::SEEDS`.
+- **URLs.** After a URL or iframe rule change, run `php -d xdebug.mode=off tools/url-fuzz.php
+  --log-dir=<dir>` (10 minutes; `--workers=8` for more seeds at once). A fragment it flags
+  gets a test and goes in `UrlFuzzer::SEEDS`.

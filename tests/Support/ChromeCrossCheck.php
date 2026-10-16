@@ -182,7 +182,7 @@ final class ChromeCrossCheck
     /**
      * The path as Chrome will read it: a Windows path when a Windows Chrome runs from WSL
      */
-    private static function pathForChrome(string $chrome, string $path): string
+    public static function pathForChrome(string $chrome, string $path): string
     {
         if (PHP_OS_FAMILY === 'Linux' && str_ends_with($chrome, '.exe')) {
             return trim((string)shell_exec('wslpath -w ' . escapeshellarg($path)));

@@ -1,0 +1,194 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>url-cross-check</title>
+<!-- UrlCrossCheck fills in the cases and the URL rules, runs this page in headless Chrome and reads the result out of the pre -->
+<script id="cases" type="application/json">__CASES__</script>
+<script id="rules" type="application/json">__RULES__</script>
+<pre id="out">not run</pre>
+<script>
+window.onerror = (message, source, line) => {
+    document.getElementById('out').textContent = 'ERR ' + message + ' line ' + line;
+};
+const {accepted, refused, verbose} = JSON.parse(document.getElementById('cases').textContent);
+const rules = JSON.parse(document.getElementById('rules').textContent);
+document.getElementById('cases').remove();   // so the dumped DOM is the result, not the input again
+
+const BASE           = 'https://example.test/dir/page.html';
+const ASCII_SPACE    = /[\t\n\f\r ]/;
+const urlAttributes  = new Set(rules.urlAttributes);
+const urlSchemes     = new Set(rules.urlSchemes);
+const iframeHosts    = new Set(rules.iframeHosts.map(host => host.toLowerCase()));
+const scriptSchemes  = new Set(rules.scriptSchemes);
+// Windows paths Chromium's WIN32 branch reads as file: URLs: \\server, C|/x, C:\x, and the same after a scheme (https:C:/x)
+const WINDOWS_PATH   = /^(?:[a-z][a-z0-9+.-]*:)?(?:[\\/]{2}|[\\/]*[a-z][:|])/i;
+
+// the value as the URL parser reads it: C0 controls and space trimmed at the ends, tab and newlines removed anywhere
+const urlStripped = value => value.replace(/^[\x00-\x20]+|[\x00-\x20]+$/g, '').replace(/[\t\n\r]/g, '');
+
+// the URLs in a srcset, split as the HTML Standard's "parse a srcset attribute" does; descriptors are skipped
+const srcsetUrls = value => {
+    const urls = [];
+    let position = 0;
+    while (true) {
+        while (position < value.length && (ASCII_SPACE.test(value[position]) || value[position] === ',')) {
+            position++;
+        }
+        if (position >= value.length) {
+            return urls;
+        }
+        let url = '';
+        while (position < value.length && !ASCII_SPACE.test(value[position])) {
+            url += value[position++];
+        }
+        if (url.endsWith(',')) {
+            urls.push(url.replace(/,+$/, ''));
+            continue;
+        }
+        urls.push(url);
+        // descriptor tokenizer: runs to a comma outside parentheses or the end
+        let inParens = false;
+        for (; position < value.length; position++) {
+            const c = value[position];
+            if (inParens) {
+                inParens = c !== ')';
+            } else if (c === '(') {
+                inParens = true;
+            } else if (c === ',') {
+                position++;
+                break;
+            }
+        }
+    }
+};
+
+// the same value split the way the check splits srcset and ping: at runs of PCRE \s (with vertical tab) and commas
+const checkSplit = value => value.split(/[\t\n\x0B\f\r ,]+/).filter(part => part !== '');
+
+const resolve = value => {
+    try {
+        return new URL(value, BASE);
+    } catch (error) {
+        return null;
+    }
+};
+
+const found         = {};
+const clean         = [];
+const resolved      = {};
+const srcsetNotes   = [];
+let srcsetDisagree  = 0;
+
+// every URL in one attribute: srcset split per the HTML Standard, ping at ASCII whitespace
+const urlsOf = (name, value) => {
+    if (name === 'srcset') {
+        return srcsetUrls(value);
+    }
+    if (name === 'ping') {
+        return value.split(/[\t\n\f\r ]+/).filter(part => part !== '');
+    }
+    return [value];
+};
+
+// what is wrong with a fragment as Chrome parsed it, as [kind, text] pairs (kind being scheme, iframe, file, windows-path, script
+// or srcdoc), and every URL in it as [element, attribute, URL, resolved href or null when Chrome cannot parse it, attribute value]
+const problemsOf = html => {
+    const problems = [];
+    const urls     = [];
+    const doc      = new DOMParser().parseFromString(html, 'text/html');
+    const walk = root => {
+        for (const element of root.querySelectorAll('*')) {
+            const html5 = element.namespaceURI === 'http://www.w3.org/1999/xhtml';
+            for (const attribute of element.attributes) {
+                const name  = attribute.name.toLowerCase();
+                const value = attribute.value;
+                const isUrl = urlAttributes.has(name)
+                    || (name === 'data' && element.localName === 'object')
+                    || (!html5 && (name === 'href' || name === 'xlink:href'));
+                if (!isUrl) {
+                    const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(value.replace(/[\x00-\x20\x7f]/g, ''));
+                    if (scheme && scriptSchemes.has(scheme[1].toLowerCase())) {
+                        problems.push(['script', name + '="' + value.slice(0, 80) + '"']);
+                    }
+                    continue;
+                }
+                const list = urlsOf(name, value);
+                if (name === 'srcset' || name === 'ping') {
+                    const checkParts = new Set(checkSplit(value));
+                    const missing    = list.filter(url => !checkParts.has(url));
+                    if (missing.length) {
+                        srcsetDisagree++;
+                        if (srcsetNotes.length < 200) {
+                            srcsetNotes.push(name + '="' + value.slice(0, 80) + '" spec URL ' + JSON.stringify(missing[0].slice(0, 60)) + ' is not one of the check\'s pieces');
+                        }
+                    }
+                }
+                for (const url of list) {
+                    const parsed = resolve(url);
+                    urls.push([element.localName, name, url.slice(0, 300), parsed ? parsed.href.slice(0, 300) : null, value.slice(0, 300)]);
+                    if (!parsed) {
+                        continue;   // Chrome loads and follows nothing from a URL it cannot parse
+                    }
+                    const scheme = parsed.protocol.slice(0, -1);
+                    if (scheme === 'file') {
+                        problems.push([WINDOWS_PATH.test(urlStripped(url)) ? 'windows-path' : 'file', name + '="' + url.slice(0, 80) + '" -> ' + parsed.href.slice(0, 100)]);
+                        continue;
+                    }
+                    const imageData = scheme === 'data' && element.localName === 'img' && name === 'src' && html5;
+                    if (!urlSchemes.has(scheme) && !imageData) {
+                        problems.push(['scheme', name + '="' + url.slice(0, 80) + '" -> ' + parsed.href.slice(0, 100)]);
+                    }
+                }
+            }
+            if (element.localName === 'iframe' && html5) {
+                if (element.hasAttribute('srcdoc')) {
+                    problems.push(['srcdoc', 'srcdoc="' + element.getAttribute('srcdoc').slice(0, 80) + '"']);
+                }
+                if (element.hasAttribute('src')) {
+                    const parsed = resolve(element.getAttribute('src'));
+                    // an unparseable src loads nothing; anything else must be http or https, a listed host and the default port
+                    if (parsed && !(['http:', 'https:'].includes(parsed.protocol) && iframeHosts.has(parsed.hostname) && parsed.port === '')) {
+                        problems.push(['iframe', 'src="' + element.getAttribute('src').slice(0, 80) + '" -> ' + parsed.href.slice(0, 100)]);
+                    }
+                }
+            }
+            if (element.localName === 'template') {
+                walk(element.content);
+            }
+        }
+    };
+    walk(doc);
+    return {problems, urls};
+};
+
+for (const [id, html] of Object.entries(accepted)) {
+    try {
+        const {problems, urls} = problemsOf(html);
+        if (problems.length) {
+            found[id] = problems;
+        }
+        if (verbose) {
+            resolved[id] = urls;
+        }
+    } catch (error) {
+        found[id] = [['error', String(error)]];
+    }
+}
+// a refused case is clean when Chrome finds nothing wrong; its resolved URLs come back so the caller can say why
+for (const [id, html] of Object.entries(refused)) {
+    try {
+        const {problems, urls} = problemsOf(html);
+        if (!problems.length) {
+            clean.push(id);
+        }
+        if (verbose || !problems.length) {
+            resolved[id] = urls;
+        }
+    } catch (error) {
+        // a refused case the page could not read is not counted as clean
+    }
+}
+document.getElementById('out').textContent = JSON.stringify({
+    checked: Object.keys(accepted).length + Object.keys(refused).length,
+    found, clean, resolved, srcsetDisagree, srcsetNotes,
+});
+</script>
